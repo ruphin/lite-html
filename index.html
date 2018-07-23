@@ -1,0 +1,14 @@
+<div id="container"></div>
+<div id="containerTwo"></div>
+
+<script type=module>
+  import { html, render } from '/src/html-lite.js';
+  window.HTMLLite = { html, render };
+
+  const hello = "hello"
+  const test = html`<!-- ${ hello } --><span attr=${ hello }>${ hello }</span>`
+  render(test, container);
+  render(test, containerTwo);
+</script>
+
+<span id="browser-sync-binding"></span>
