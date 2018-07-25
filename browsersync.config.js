@@ -8,7 +8,7 @@ module.exports = {
   snippetOptions: {
     rule: {
       match: '<span id="browser-sync-binding"></span>',
-      fn: function (snippet) {
+      fn: function(snippet) {
         return snippet;
       }
     }
@@ -16,5 +16,5 @@ module.exports = {
   server: {
     baseDir: ['.', 'node_modules']
   },
-  files: ['*.js', 'src/*.js', 'index.html']
+  files: ['*.js', 'src/**/*.js', 'index.html']
 };

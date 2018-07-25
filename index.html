@@ -1,29 +1,36 @@
 <div id="container"></div>
-<div id="containerTwo"></div>
 
 <script type=module>
   import { html, render } from '/src/html-lite.js';
   window.HTMLLite = { html, render };
 
-  const testString = "changedString";
-  const template = (string, toggled) => {
-    const node = document.createTextNode(' - Heres a textnode');
-    return html`
-  <!-- This comment is about: ${ string } -->
-  <span attr = ${ string }>
-  <span attrtwo=${ string } attrthree=${ string }>This text is about: ${ toggled ? html`<p>${string}</p>` : html`<h3>${string}</h3>` }</span>
-  </span>`;
+  let items = [];
+
+  const update = () => {
+    const input = document.getElementById('input');
+    if (input.value) {
+      items.push(input.value);
+      input.value = '';
+      render(template(), container)
+    }
   }
-  render(template('test', true), container);
-  setTimeout(() => {
-    render(template('test2'), container);
-  }, 1000)
-  setTimeout(() => {
-    render(template('test3', true), container);
-  }, 2000)
-  setTimeout(() => {
-    render(template('test4'), container);
-  }, 3000)
+
+  const remove = (e) => {
+    const removeItem = e.target.parentNode.item;
+    items = items.filter(item => item !== removeItem)
+    render(template(), container)
+  }
+
+  const template = () => {
+    return html`
+      <!-- ${ 'string' }> <!-- ${ 'string' }> -->
+      <input id="input"></input>
+      <button attribute=${'something'} @click=${update}>Add to list</button>
+      ${ items.map(item => html`<p .item=${item}>${item} - <button @click=${remove}>X</span></button>`) }
+    `;
+  }
+
+  render(template(), container);
 </script>
 
 <span id="browser-sync-binding"></span>
