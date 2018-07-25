@@ -5,10 +5,25 @@
   import { html, render } from '/src/html-lite.js';
   window.HTMLLite = { html, render };
 
-  const hello = "hello"
-  const test = html`<!-- ${ hello } --><span attr=${ hello }>${ hello }</span>`
-  render(test, container);
-  render(test, containerTwo);
+  const testString = "changedString";
+  const template = (string, toggled) => {
+    const node = document.createTextNode(' - Heres a textnode');
+    return html`
+  <!-- This comment is about: ${ string } -->
+  <span attr = ${ string }>
+  <span attrtwo=${ string } attrthree=${ string }>This text is about: ${ toggled ? html`<p>${string}</p>` : html`<h3>${string}</h3>` }</span>
+  </span>`;
+  }
+  render(template('test', true), container);
+  setTimeout(() => {
+    render(template('test2'), container);
+  }, 1000)
+  setTimeout(() => {
+    render(template('test3', true), container);
+  }, 2000)
+  setTimeout(() => {
+    render(template('test4'), container);
+  }, 3000)
 </script>
 
 <span id="browser-sync-binding"></span>
