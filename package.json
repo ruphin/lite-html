@@ -7,7 +7,7 @@
   "module": "html-lite.js",
   "jsnext:main": "html-lite.js",
   "files": [
-    "html-lite.*"
+    "src/**/*"
   ],
   "repository": {
     "type": "git",
