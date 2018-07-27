@@ -1,0 +1,9 @@
+<meta charset="utf-8">
+
+<script type="module">
+  import { commentContext, nodeContext, attributeContext, unchangedContext, htmlContext, parseTemplate } from '/src/lib/template-parser.js';
+  window.TemplateParser = { commentContext, nodeContext, attributeContext, unchangedContext, htmlContext, parseTemplate };
+  window.html = (strings, ...parts) => {
+    return strings;
+  }
+</script>
