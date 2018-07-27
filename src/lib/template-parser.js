@@ -7,10 +7,10 @@ const nodeMarkerTag = `<!--${nodeMarker}-->`;
 // The second marker is to add a boolean attribute to easily check if a node has dynamic attributes
 const attributeMarkerTag = `${attributeMarker} ${attributeMarker}`;
 
-const commentContext = Symbol('commentContext');
-const nodeContext = Symbol('nodeContext');
-const attributeContext = Symbol('attributeContext');
-const unchangedContext = Symbol('unchangedContext');
+export const commentContext = Symbol('commentContext');
+export const nodeContext = Symbol('nodeContext');
+export const attributeContext = Symbol('attributeContext');
+export const unchangedContext = Symbol('unchangedContext');
 
 const contextMap = new Map();
 contextMap.set(commentContext, commentMarkerTag);

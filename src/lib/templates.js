@@ -1,5 +1,5 @@
-import { findParts } from './parts.js';
-import { parseTemplate } from './html-parser.js';
+import { findParts } from './node-walker.js';
+import { parseTemplate } from './template-parser.js';
 
 const templateMap = new Map();
 

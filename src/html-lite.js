@@ -23,8 +23,6 @@
  * SOFTWARE.
  */
 
-import { commentMarker, nodeMarker, attributeMarker } from './lib/markers.js';
-
 import { TemplateResult, TemplateInstance } from './lib/templates.js';
 
 export const html = (strings, ...values) => {
