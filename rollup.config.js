@@ -4,12 +4,10 @@ import babel from 'rollup-plugin-babel';
 import commonjs from 'rollup-plugin-commonjs';
 import * as path from 'path';
 
-
-function getConfig({ dest, format, uglified = true, transpiled = false}) {
+function getConfig({ dest, format, uglified = false, transpiled = false }) {
   const conf = {
     input: 'src/html-lite.js',
-    output: { file: dest, format, sourcemap: true },
-    external: bundled ? [] : [path.resolve('./lit-html/lib/lit-extended.js'), path.resolve('./lit-html/lib/shady-render.js')],
+    output: { file: dest, name: 'html-lite', format, sourcemap: true },
     plugins: [
       transpiled &&
         commonjs({
@@ -20,14 +18,15 @@ function getConfig({ dest, format, uglified = true, transpiled = false}) {
           presets: [['env', { modules: false }]],
           plugins: ['external-helpers']
         }),
-      uglify({
-        warnings: true,
-        toplevel: uglified,
-        sourceMap: uglified,
-        compress: uglified && { passes: 2 },
-        mangle: uglified,
-        output: { beautify: !uglified }
-      }),
+      uglified &&
+        uglify({
+          warnings: true,
+          toplevel: uglified,
+          sourceMap: uglified,
+          compress: uglified && { passes: 2 },
+          mangle: uglified,
+          output: { beautify: !uglified }
+        }),
       filesize()
     ].filter(Boolean)
   };
@@ -35,9 +34,6 @@ function getConfig({ dest, format, uglified = true, transpiled = false}) {
   return conf;
 }
 
-const config = [
-  getConfig({ dest: 'html-lite.es5.js', format: 'iife', transpiled: true }),
-  getConfig({ dest: 'html-lite.js', format: 'es' })
-];
+const config = [getConfig({ dest: 'html-lite.es5.js', format: 'umd', transpiled: true }), getConfig({ dest: 'html-lite.js', format: 'es' })];
 
 export default config;
