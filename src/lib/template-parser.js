@@ -1,21 +1,22 @@
-import { commentMarker, nodeMarker, attributeMarker } from './markers.js';
+import { attributeMarker, commentMarker, nodeMarker } from './markers.js';
 
-// The space at the end is necessary, or a part followed by a '>' character becomes <!-->
-const commentMarkerTag = `--><!--${commentMarker}--><!-- `;
-const nodeMarkerTag = `<!--${nodeMarker}-->`;
+// The second marker is to add a boolean attribute to the element
+// This is to easily test if a node has dynamic attributes by checking against that attribute
+export const attributeMarkerTag = `${attributeMarker} ${attributeMarker}`;
 
-// The second marker is to add a boolean attribute to easily check if a node has dynamic attributes
-const attributeMarkerTag = `${attributeMarker} ${attributeMarker}`;
+// The space at the end is necessary, to avoid accidentally closing comments with `<!-->`
+export const commentMarkerTag = `--><!--${commentMarker}--><!-- `;
+export const nodeMarkerTag = `<!--${nodeMarker}-->`;
 
+export const attributeContext = Symbol('attributeContext');
 export const commentContext = Symbol('commentContext');
 export const nodeContext = Symbol('nodeContext');
-export const attributeContext = Symbol('attributeContext');
 export const unchangedContext = Symbol('unchangedContext');
 
 const contextMap = new Map();
+contextMap.set(attributeContext, attributeMarkerTag);
 contextMap.set(commentContext, commentMarkerTag);
 contextMap.set(nodeContext, nodeMarkerTag);
-contextMap.set(attributeContext, attributeMarkerTag);
 
 export const htmlContext = string => {
   const openComment = string.lastIndexOf('<!--');
@@ -43,19 +44,26 @@ export const htmlContext = string => {
 export const parseTemplate = strings => {
   const html = [];
   const lastStringIndex = strings.length - 1;
-  let currentContext;
+  let currentContext = nodeContext;
   for (let i = 0; i < lastStringIndex; i++) {
     const string = strings[i];
-    html.push(string);
     const context = htmlContext(string);
     if ((currentContext !== commentContext || context.commentClosed) && context.type !== unchangedContext) {
       currentContext = context.type;
     }
+    if (currentContext === attributeContext && string.slice(-1) !== '=') {
+      throw new Error('Only bare attribute parts are allowed: `<div a=${0}>`');
+    }
+    html.push(string);
     html.push(contextMap.get(currentContext));
   }
-  html.push(strings[lastStringIndex]);
 
+  html.push(strings[lastStringIndex]);
+  return html.join('');
+};
+
+export const buildTemplate = strings => {
   const template = document.createElement('template');
-  template.innerHTML = html.join('');
+  template.innerHTML = parseTemplate(strings);
   return template;
 };

@@ -1,12 +1,12 @@
 import { findParts } from './node-walker.js';
-import { parseTemplate } from './template-parser.js';
+import { buildTemplate } from './template-parser.js';
 
 const templateMap = new Map();
 
 export class Template {
   constructor(strings) {
     this.strings = strings;
-    this.element = parseTemplate(strings);
+    this.element = buildTemplate(strings);
     this.parts = findParts(strings, this.element);
   }
 }

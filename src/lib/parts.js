@@ -69,6 +69,8 @@ export class NodePart {
       return;
     }
     const parent = this.endMarker.parentNode;
+    // TODO: Fix this -  it swaps the order of nodes when swapping out document fragments
+    // Need to abstract this to a 'removeNodes' function that can also be used in render();
     if (this.previousValue instanceof DocumentFragment) {
       while (this.endMarker.previousSibling != this.startMarker) {
         this.previousValue.appendChild(this.endMarker.previousSibling);

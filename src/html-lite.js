@@ -31,25 +31,16 @@ export const html = (strings, ...values) => {
 
 export const render = (templateResult, target) => {
   let instance = target.__templateInstance;
+  // TODO: Do something smart when the template is different.
+  // Probably use some removeNodes function that re-appends nodes into the old fragment
   if (!instance || instance.template !== templateResult.template) {
     instance = new TemplateInstance(templateResult.template);
     target.__templateInstance = instance;
 
-    removeNodes(target, target.firstChild);
+    target.innerHTML = '';
     instance.update(templateResult.values);
     target.appendChild(instance.fragment);
   } else {
     instance.update(templateResult.values);
-  }
-};
-
-const removeNodes = (target, startNode, endNode) => {
-  let node = startNode;
-  if (node) {
-    while (node !== endNode) {
-      const nextNode = node.nextSibling;
-      target.removeChild(node);
-      node = nextNode;
-    }
   }
 };

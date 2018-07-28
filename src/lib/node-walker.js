@@ -28,12 +28,8 @@ export const findParts = (strings, template) => {
 
         for (let i = 0; i < dynamicAttributes.length; i++) {
           const attributeMatch = lastAttributeNameRegex.exec(strings[parts.length]);
-          if (attributeMatch) {
-            const attribute = attributeMatch[1];
-            parts.push({ type: AttributePart, path, attribute });
-          } else {
-            throw new Error(`Invalid part: ${strings[parts.length]}\${ !! }${strings[parts.length + 1]}`);
-          }
+          const attribute = attributeMatch[1];
+          parts.push({ type: AttributePart, path, attribute });
         }
       }
     }
