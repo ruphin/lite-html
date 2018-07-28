@@ -18,7 +18,7 @@ contextMap.set(attributeContext, attributeMarkerTag);
 contextMap.set(commentContext, commentMarkerTag);
 contextMap.set(nodeContext, nodeMarkerTag);
 
-export const htmlContext = string => {
+export const parseContext = string => {
   const openComment = string.lastIndexOf('<!--');
   const closeComment = string.indexOf('-->', openComment + 1);
   const commentClosed = closeComment > -1;
@@ -47,7 +47,7 @@ export const parseTemplate = strings => {
   let currentContext = nodeContext;
   for (let i = 0; i < lastStringIndex; i++) {
     const string = strings[i];
-    const context = htmlContext(string);
+    const context = parseContext(string);
     if ((currentContext !== commentContext || context.commentClosed) && context.type !== unchangedContext) {
       currentContext = context.type;
     }

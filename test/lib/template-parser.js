@@ -6,7 +6,7 @@ import {
   commentContext,
   nodeContext,
   unchangedContext,
-  htmlContext,
+  parseContext,
   parseTemplate,
   buildTemplate
 } from '/src/lib/template-parser.js';
@@ -16,14 +16,14 @@ const expect = chai.expect;
 const html = strings => strings;
 
 describe('templateParser', () => {
-  describe('htmlContext', () => {
+  describe('parseContext', () => {
     it(`detects open comments`, () => {
-      expect(htmlContext('<!--').type).to.equal(commentContext);
+      expect(parseContext('<!--').type).to.equal(commentContext);
     });
 
     it(`detects closed comments`, () => {
-      expect(htmlContext('<!-- -->').commentClosed).to.be.true;
-      expect(htmlContext('<!-->').commentClosed).to.be.true;
+      expect(parseContext('<!-- -->').commentClosed).to.be.true;
+      expect(parseContext('<!-->').commentClosed).to.be.true;
     });
   });
 
