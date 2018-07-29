@@ -30,8 +30,8 @@ const license = `/**
  */
 `;
 
-function getConfig({ dest, format, uglified = false, transpiled = false }) {
-  const conf = {
+function htmlLite({ dest, format, uglified = false, transpiled = false }) {
+  return {
     input: 'src/html-lite.js',
     output: { banner: license, file: dest, name: 'html-lite', format, sourcemap: true },
     plugins: [
@@ -54,10 +54,45 @@ function getConfig({ dest, format, uglified = false, transpiled = false }) {
       filesize()
     ].filter(Boolean)
   };
-
-  return conf;
 }
 
-const config = [getConfig({ dest: 'html-lite.es5.js', format: 'umd', transpiled: true }), getConfig({ dest: 'html-lite.js', format: 'es' })];
+function test(file) {
+  return {
+    input: `test/${file}.js`,
+    output: { banner: license, file: `test/${file}.es5.js`, format: 'iife', name: 'test' },
+    plugins: [
+      commonjs({
+        include: 'node_modules/**'
+      }),
+      babel({
+        presets: [['env', { modules: false }]],
+        plugins: ['external-helpers']
+      })
+    ]
+  };
+}
+
+const demo = {
+  input: `demo/index.js`,
+  output: { banner: license, file: `demo/index.es5.js`, format: 'iife', name: 'demo' },
+  plugins: [
+    commonjs({
+      include: 'node_modules/**'
+    }),
+    babel({
+      presets: [['env', { modules: false }]],
+      plugins: ['external-helpers']
+    })
+  ]
+};
+
+const config = [
+  htmlLite({ dest: 'html-lite.es5.js', format: 'umd', transpiled: true }),
+  htmlLite({ dest: 'html-lite.js', format: 'es' }),
+  test('lib/marker'),
+  test('lib/node-walker'),
+  test('lib/template-parser'),
+  demo
+];
 
 export default config;
