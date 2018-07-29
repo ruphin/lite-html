@@ -34,21 +34,54 @@ import {
   parseContext,
   parseTemplate,
   buildTemplate
-} from '/src/lib/template-parser.js';
-import { attributeMarker, commentMarker, nodeMarker } from '/src/lib/markers.js';
+} from '../../src/lib/template-parser.js';
+import { attributeMarker, commentMarker, nodeMarker, failFlag } from '../../src/lib/markers.js';
 
 const expect = chai.expect;
 const html = strings => strings;
 
 describe('templateParser', () => {
   describe('parseContext', () => {
-    it(`detects open comments`, () => {
+    it(`detects comment contexts`, () => {
       expect(parseContext('<!--').type).to.equal(commentContext);
+      expect(parseContext('<div><!--').type).to.equal(commentContext);
+      expect(parseContext('<!-- ').type).to.equal(commentContext);
+      expect(parseContext('<!-- <div>').type).to.equal(commentContext);
+      expect(parseContext('<!-- a=').type).to.equal(commentContext);
     });
 
     it(`detects closed comments`, () => {
       expect(parseContext('<!-- -->').commentClosed).to.be.true;
       expect(parseContext('<!-->').commentClosed).to.be.true;
+      expect(parseContext('-->').commentClosed).to.be.true;
+      expect(parseContext(' -->').commentClosed).to.be.true;
+      expect(parseContext('<div> -->').commentClosed).to.be.true;
+    });
+
+    it(`detects unchanged contexts`, () => {
+      expect(parseContext('').type).to.equal(unchangedContext);
+      expect(parseContext(' ').type).to.equal(unchangedContext);
+      expect(parseContext('some text').type).to.equal(unchangedContext);
+      expect(parseContext('👍').type).to.equal(unchangedContext);
+    });
+
+    it(`detects node contexts`, () => {
+      expect(parseContext('<div>').type).to.equal(nodeContext);
+      expect(parseContext('<div> ').type).to.equal(nodeContext);
+      expect(parseContext('<div>text').type).to.equal(nodeContext);
+      expect(parseContext('<div> a=').type).to.equal(nodeContext);
+      expect(parseContext('<div>text<div></div>').type).to.equal(nodeContext);
+      expect(parseContext('<!-->').type).to.equal(nodeContext);
+      expect(parseContext('<!-- -->').type).to.equal(nodeContext);
+    });
+
+    it(`detects attribute contexts`, () => {
+      expect(parseContext('<div a=').type).to.equal(attributeContext);
+      expect(parseContext('<div a =').type).to.equal(attributeContext);
+    });
+
+    it(`detects a node context when an attribute contains the '>' character`, () => {
+      expect(parseContext('<div a=">" b=').type).to.equal(nodeContext);
     });
   });
 
@@ -63,6 +96,7 @@ describe('templateParser', () => {
       expect(parseTemplate(html`${0}b${0}`)).to.equal(`${nodeMarkerTag}b${nodeMarkerTag}`);
       expect(parseTemplate(html`${0}${0}c`)).to.equal(`${nodeMarkerTag}${nodeMarkerTag}c`);
       expect(parseTemplate(html`a${0}b${0}c`)).to.equal(`a${nodeMarkerTag}b${nodeMarkerTag}c`);
+      expect(parseTemplate(html`<!-- -->${0}`)).to.equal(`<!-- -->${nodeMarkerTag}`);
     });
 
     it(`inserts attributeMarkerTags`, () => {
@@ -75,6 +109,11 @@ describe('templateParser', () => {
       expect(parseTemplate(html`<div a=${0} b="0" c=${0}></div>`)).to.equal(`<div a=${attributeMarkerTag} b="0" c=${attributeMarkerTag}></div>`);
       expect(parseTemplate(html`<div a=${0} b></div>`)).to.equal(`<div a=${attributeMarkerTag} b></div>`);
       expect(parseTemplate(html`<div a b=${0}></div>`)).to.equal(`<div a b=${attributeMarkerTag}></div>`);
+      expect(parseTemplate(html`<div a=">" b=${0}></div>`)).to.equal(`<div a=">" b=${nodeMarkerTag}></div>`);
+    });
+
+    it(`inserts a nodeMarkerTag when an attribute contains the '>' character`, () => {
+      expect(parseTemplate(html`<div a=">" b=${0}></div>`)).to.equal(`<div a=">" b=${nodeMarkerTag}></div>`);
     });
 
     it(`raises on incorrect attribute tag usage`, () => {
@@ -147,14 +186,20 @@ describe('templateParser', () => {
   describe('buildTemplate', () => {
     it(`injects a commentNode for node parts`, () => {
       expect(buildTemplate(html`${0}`).content.firstChild.nodeType).to.equal(8);
-      expect(buildTemplate(html`${0}`).content.firstChild.textContent).to.equal(nodeMarker);
       expect(buildTemplate(html`<div>${0}</div>`).content.firstChild.firstChild.nodeType).to.equal(8);
+    });
+
+    it(`the injected commentNode for node parts contains the nodeMarker`, () => {
+      expect(buildTemplate(html`${0}`).content.firstChild.textContent).to.equal(nodeMarker);
       expect(buildTemplate(html`<div>${0}</div>`).content.firstChild.firstChild.textContent).to.equal(nodeMarker);
     });
 
     it(`injects a commentNode in between comment strings`, () => {
       expect(buildTemplate(html`<!--${0}-->`).content.childNodes.length).to.equal(3);
       expect(buildTemplate(html`<!-- ${0} -->`).content.childNodes.length).to.equal(3);
+    });
+
+    it(`the injected commentNode for comment parts contains the commentMarker`, () => {
       expect(buildTemplate(html`<!--${0}-->`).content.childNodes[1].textContent).to.equal(commentMarker);
     });
 
@@ -177,6 +222,11 @@ describe('templateParser', () => {
       expect(buildTemplate(html`<!--<!${0}-->`).content.childNodes.length).to.equal(3);
       expect(buildTemplate(html`<!--<!-${0}-->`).content.childNodes.length).to.equal(3);
       expect(buildTemplate(html`<!--<!--${0}-->`).content.childNodes.length).to.equal(3);
+    });
+
+    it(`adds the failFlag attribute to nodes when an attribute contains the '>' character`, () => {
+      expect(buildTemplate(html`<div a=">" b=${0}></div>`).content.childNodes[0].hasAttribute(failFlag)).to.be.true;
+      expect(buildTemplate(html`<div a=">" b="${0}"></div>`).content.childNodes[0].hasAttribute(failFlag)).to.be.true;
     });
   });
 });

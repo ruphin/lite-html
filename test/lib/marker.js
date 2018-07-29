@@ -23,7 +23,7 @@
  * SOFTWARE.
  */
 
-import { marker, attributeMarker, commentMarker, nodeMarker } from '/src/lib/markers.js';
+import { marker, attributeMarker, commentMarker, nodeMarker } from '../../src/lib/markers.js';
 
 const expect = chai.expect;
 
@@ -35,35 +35,29 @@ describe('markers', () => {
     it('should contain only lowercase alphanumerical characters', () => {
       expect(marker.match(alphaNumericalRegex)).to.not.be.null;
     });
-    it('should be at least 8 characters long', () => {
-      expect(marker.length >= 8).to.be.true;
+    it('should be at least 10 characters long', () => {
+      expect(marker.length).to.be.at.least(10);
     });
   });
 
   describe('nodeMarker', () => {
-    it(`should start with 'node-'`, () => {
-      expect(nodeMarker.substring(0, 5)).to.be.equal('node-');
-    });
-    it(`should only contain lowercase alphanumerical characters and '-'`, () => {
-      expect(nodeMarker.match(alphaNumericalAndDashRegex)).to.not.be.null;
+    it(`should contain the random marker`, () => {
+      expect(nodeMarker.indexOf(marker)).to.be.above(0);
     });
   });
 
   describe('commentMarker', () => {
-    it(`should start with 'comment-'`, () => {
-      expect(commentMarker.substring(0, 8)).to.be.equal('comment-');
-    });
-    it(`should only contain lowercase alphanumerical characters and '-'`, () => {
-      expect(commentMarker.match(alphaNumericalAndDashRegex)).to.not.be.null;
+    it(`should contain the random marker`, () => {
+      expect(commentMarker.indexOf(marker)).to.be.above(0);
     });
   });
 
   describe('attributeMarker', () => {
-    it(`should start with 'attribute-'`, () => {
-      expect(attributeMarker.substring(0, 10)).to.be.equal('attribute-');
-    });
     it(`should only contain lowercase alphanumerical characters and '-'`, () => {
       expect(attributeMarker.match(alphaNumericalAndDashRegex)).to.not.be.null;
+    });
+    it(`should contain the random marker`, () => {
+      expect(attributeMarker.indexOf(marker)).to.be.above(0);
     });
   });
 });

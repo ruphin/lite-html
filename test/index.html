@@ -3,6 +3,7 @@
 <script src="../node_modules/wct-browser-legacy/browser.js"></script>
 <script src="../node_modules/@webcomponents/template/template.js"></script>
 <script src="../node_modules/babel-polyfill/dist/polyfill.min.js"></script>
+
 <style>
   #mocha {
     left: 0 !important;
@@ -14,6 +15,13 @@
 <script type="module" src="./lib/template-parser.js"></script>
 <script type="module" src="./lib/node-walker.js"></script>
 <script type="module">
+  mocha.run();
+</script>
+
+<script nomodule src="./lib/marker.es5.js"></script>
+<script nomodule src="./lib/template-parser.es5.js"></script>
+<script nomodule src="./lib/node-walker.es5.js"></script>
+<script nomodule>
   mocha.run();
 </script>
 

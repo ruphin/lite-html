@@ -23,9 +23,9 @@
  * SOFTWARE.
  */
 
-import { buildTemplate } from '/src/lib/template-parser.js';
-import { findParts } from '/src/lib/node-walker.js';
-import { AttributePart, CommentPart, NodePart } from '/src/lib/parts.js';
+import { buildTemplate } from '../../src/lib/template-parser.js';
+import { findParts } from '../../src/lib/node-walker.js';
+import { AttributePart, CommentPart, NodePart } from '../../src/lib/parts.js';
 
 const expect = chai.expect;
 const html = strings => strings;
@@ -39,6 +39,46 @@ describe('nodeWalker', () => {
       expect(parts[0].type).to.equal(CommentPart);
       expect(parts[1].type).to.equal(AttributePart);
       expect(parts[2].type).to.equal(NodePart);
+    });
+
+    it(`Returns the correct path for node parts`, () => {
+      const strings = html`<div>${0}<div>${0}</div></div>`;
+      const template = buildTemplate(strings);
+      const parts = findParts(strings, template);
+      expect(parts[0].path).to.deep.equal([0, 0]);
+      expect(parts[1].path).to.deep.equal([0, 1, 0]);
+    });
+
+    it(`Considers text nodes in paths`, () => {
+      const strings = html`<div> ${0} <div> ${0}</div></div>`;
+      const template = buildTemplate(strings);
+      const parts = findParts(strings, template);
+      expect(parts[0].path).to.deep.equal([0, 1]);
+      expect(parts[1].path).to.deep.equal([0, 3, 1]);
+    });
+
+    it(`Considers comment nodes in paths`, () => {
+      const strings = html`<div><!-- -->${0}<!-- --><div><!-- -->${0}</div></div>`;
+      const template = buildTemplate(strings);
+      const parts = findParts(strings, template);
+      expect(parts[0].path).to.deep.equal([0, 1]);
+      expect(parts[1].path).to.deep.equal([0, 3, 1]);
+    });
+
+    it(`Returns the correct path for attribute parts`, () => {
+      const strings = html`<div a=${0}><div></div><div a=${0}></div></div>`;
+      const template = buildTemplate(strings);
+      const parts = findParts(strings, template);
+      expect(parts[0].path).to.deep.equal([0]);
+      expect(parts[1].path).to.deep.equal([0, 1]);
+    });
+
+    it(`Returns the correct path for attribute parts`, () => {
+      const strings = html`<div a=${0}><div></div><div a=${0}></div></div>`;
+      const template = buildTemplate(strings);
+      const parts = findParts(strings, template);
+      expect(parts[0].path).to.deep.equal([0]);
+      expect(parts[1].path).to.deep.equal([0, 1]);
     });
 
     it(`Preserves original attribute names`, () => {
@@ -68,7 +108,7 @@ describe('nodeWalker', () => {
         <div 
           .a=${0}
           ?a=${1}
-          @a=${2}
+          @a=${2}>
         </div>`;
       const template = buildTemplate(strings);
       const parts = findParts(strings, template);
