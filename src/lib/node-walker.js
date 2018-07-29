@@ -23,7 +23,7 @@
  * SOFTWARE.
  */
 
-import { attributeMarker, commentMarker, nodeMarker } from './markers.js';
+import { attributeMarker, commentMarker, nodeMarker, failFlag } from './markers.js';
 import { AttributePart, CommentPart, NodePart } from './parts.js';
 
 const lastAttributeNameRegex = /[ \x09\x0a\x0c\x0d]([^\0-\x1F\x7F-\x9F \x09\x0a\x0c\x0d"'>=/]+)[ \x09\x0a\x0c\x0d]*=[ \x09\x0a\x0c\x0d]*(?:[^ \x09\x0a\x0c\x0d"'`<>=]*|"[^"]*|'[^']*)$/;
@@ -33,6 +33,9 @@ export const findParts = (strings, template) => {
 
   // Recursive depth-first tree traversal that finds nodes in the subtree of `node` that are parts.
   const recursiveIndex = (node, path) => {
+    if (node === undefined) {
+      return;
+    }
     if (node.nodeType === 8) {
       if (node.nodeValue === commentMarker) {
         parts.push({ type: CommentPart, path });
@@ -44,6 +47,9 @@ export const findParts = (strings, template) => {
 
     // Element Node
     if (node.nodeType === 1) {
+      if (node.hasAttribute(failFlag)) {
+        throw new Error("The '>' character is not allowed in attribute literals. Replace with '&gt;'");
+      }
       // All nodes with attribute parts have the attributeMarker set as an attribute
       if (node.hasAttribute(attributeMarker)) {
         node.removeAttribute(attributeMarker);

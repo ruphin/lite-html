@@ -23,7 +23,7 @@
  * SOFTWARE.
  */
 
-import { attributeMarker, commentMarker, nodeMarker } from './markers.js';
+import { attributeMarker, commentMarker, nodeMarker, failFlag } from './markers.js';
 
 // The second marker is to add a boolean attribute to the element
 // This is to easily test if a node has dynamic attributes by checking against that attribute
@@ -31,6 +31,9 @@ export const attributeMarkerTag = `${attributeMarker} ${attributeMarker}`;
 
 // The space at the end is necessary, to avoid accidentally closing comments with `<!-->`
 export const commentMarkerTag = `--><!--${commentMarker}--><!-- `;
+
+// The extra content at the end is to add a flag to an element when
+// a nodeMarkerTag is inserted as an attribute due to an attribute containing `>`
 export const nodeMarkerTag = `<!--${nodeMarker}-->`;
 
 export const attributeContext = Symbol('attributeContext');
@@ -51,7 +54,7 @@ export const parseContext = string => {
   if (openComment > -1 && !commentClosed) {
     type = commentContext;
   } else {
-    const closeTag = string.lastIndexOf('>', string.length - closeComment);
+    const closeTag = string.lastIndexOf('>');
     const openTag = string.indexOf('<', closeTag + 1);
     if (openTag > -1) {
       type = attributeContext;
