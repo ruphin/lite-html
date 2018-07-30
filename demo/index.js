@@ -27,7 +27,7 @@ const template = () => {
       ${todos.map(
         todo => html`
       <p .todo=${todo.id}>
-        <button a=">" @click=${remove}>X</button> - ${todo.text}</p>`
+        <button @click=${remove}>X</button> - ${todo.text}</p>`
       )}
     `;
 };
