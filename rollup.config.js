@@ -79,6 +79,11 @@ const demo = {
     commonjs({
       include: 'node_modules/**'
     }),
+    cleanup({
+      maxEmptyLines: 1,
+      // This removes redundant @license comments
+      comments: [/^[\*\s]*[^@\*\s]/]
+    }),
     babel({
       presets: [['env', { modules: false }]],
       plugins: ['external-helpers']
