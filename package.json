@@ -7,6 +7,7 @@
   "module": "html-lite.js",
   "jsnext:main": "html-lite.js",
   "files": [
+    "html-lite.*",
     "src/**/*"
   ],
   "repository": {
@@ -27,10 +28,10 @@
     "url": "https://github.com/ruphin/html-lite/issues"
   },
   "scripts": {
-    "build": "cp src/*.js . && rollup -c",
+    "build": "rollup -c",
     "dev": "browser-sync start --config browsersync.config.js",
     "release": "np",
-    "test": "mocha"
+    "test": "npm run build && wct --npm"
   },
   "homepage": "https://github.com/ruphin/html-lite",
   "devDependencies": {
@@ -51,6 +52,7 @@
     "rollup-plugin-filesize": "^4.0.1",
     "rollup-plugin-includepaths": "^0.2.3",
     "rollup-plugin-terser": "^1.0.1",
-    "wct-browser-legacy": "^1.0.1"
+    "wct-browser-legacy": "^1.0.1",
+    "web-component-tester": "^6.6.0"
   }
 }
