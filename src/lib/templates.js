@@ -40,14 +40,19 @@ export class TemplateResult {
   constructor(strings, values) {
     this.strings = strings;
     this.values = values;
+    this._template = undefined;
   }
 
   get template() {
+    if (this._template) {
+      return this._template;
+    }
     let template = templateMap.get(this.strings);
     if (!template) {
       template = new Template(this.strings);
       templateMap.set(this.strings, template);
     }
+    this._template = template;
     return template;
   }
 }
@@ -55,7 +60,7 @@ export class TemplateResult {
 export class TemplateInstance {
   constructor(template) {
     this.template = template;
-    this.partTemplates = new Map();
+    // this.partTemplates = new Map();
     this.fragment = template.element.content.cloneNode(true);
     this.initializeParts();
   }
@@ -72,7 +77,13 @@ export class TemplateInstance {
     this.parts = parts.map(part => new part.type(part.node, part.attribute));
   }
 
-  update(values) {
-    this.parts.map((part, index) => part.update(values[index]));
+  adopt(oldParent, newParent) {
+    this.parts.filter(part => part.parentNode === undefined || part.parentNode === oldParent).forEach(part => {
+      part.parentNode = newParent;
+    });
+  }
+
+  render(values) {
+    this.parts.map((part, index) => part.render(values[index]));
   }
 }

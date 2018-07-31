@@ -26,100 +26,154 @@
 import { TemplateResult, TemplateInstance } from './templates.js';
 
 const isPrimitive = value => !(typeof value === 'object' || typeof value === 'function');
+const isArray = value => Array.isArray(value) || value[Symbol.iterator];
 
 export class NodePart {
-  constructor(placeholder) {
-    this.previousNode = placeholder;
-    this.startMarker = document.createComment('');
-    this.endMarker = document.createComment('');
+  // currentNode OR parentNode  _must_ be defined
+  // If a parentNode is defined, this NodePart represents the entire content of the parent
+  // If a currentNode is defined, this NodePart represents the position of that node in the tree
+  constructor(currentNode, parentNode) {
+    this.iterableFragment = document.createDocumentFragment();
+    this.iterableParts = [];
+    this.currentNode = currentNode;
+    this.previousValue = undefined;
+
+    this.parentNode = currentNode ? currentNode.parentNode : parentNode;
+
+    this.beforeNode = currentNode ? currentNode.previousSibling : undefined;
+    this.afterNode = currentNode ? currentNode.nextSibling : undefined;
+
     this.subTemplates = new Map();
-    const parent = placeholder.parentNode;
-    parent.insertBefore(this.startMarker, placeholder);
-    parent.insertBefore(this.endMarker, placeholder);
-    parent.removeChild(placeholder);
   }
-  update(value) {
+
+  render(value) {
     if (isPrimitive(value)) {
-      // Handle primitive values
-      // If the value didn't change, do nothing
-      if (value === this.previousValue) {
-        return;
-      }
-      this._setText(value);
+      this._renderPrimitive(value);
     } else if (value instanceof TemplateResult) {
-      this._setTemplateResult(value);
-    } else if (Array.isArray(value) || value[Symbol.iterator]) {
-      this._setIterable(value);
+      this._renderTemplateResult(value);
+    } else if (isArray(value)) {
+      this._renderIterable(value);
     } else if (value instanceof Node) {
-      this._setNode(value);
+      this._renderNode(value);
     } else if (value.then !== undefined) {
-      this._setPromise(value);
+      this._renderPromise(value);
     } else {
-      this._setText(value);
+      this._renderPrimitive(String(value));
+      this.previousValue = String(value);
     }
+    // TODO: something smart
+    this.previousValue = value;
   }
 
-  _setIterable(value) {
-    const append = () => {
+  /**
+   * Render an iterable in this part
+   *
+   * Creates a part for each item in the iterable
+   * Render each iterable value in a part
+   */
+  _renderIterable(iterable) {
+    if (this.previousNode !== this.iterableFragment) {
+      this.clear();
+    }
+
+    this.parentNode.insertBefore(this.iterableFragment, this.afterNode);
+
+    while (this.iterableParts.length < iterable.length) {
       const placeholder = document.createComment('');
-      this.endMarker.parentNode.insertBefore(placeholder, this.endMarker);
-      return new NodePart(placeholder);
-    };
+      const delimiter = document.createTextNode('');
+      this.parentNode.insertBefore(delimiter, this.afterNode);
+      this.parentNode.insertBefore(placeholder, delimiter);
+      this.iterableParts.push(new NodePart(placeholder, this.parentNode));
+    }
 
-    this._setNode(document.createComment(''));
-    value.forEach(item => {
-      append().update(item);
+    this.iterableParts.forEach((part, index) => {
+      if (iterable[index] === undefined) {
+        part.clear();
+      } else {
+        part.render(iterable[index]);
+      }
     });
-    // if (!this.previousValue || !Array.isArray(this.previousValue) || !this.previousValue[Symbol.iterator]) {
-
-    //   // Construct a new array thing
-    // } else {
-    //   // Re-use array thing
-    // }
+    this.previousNode = this.iterableFragment;
   }
 
-  _setText(text) {
-    if (this.previousValue === text) {
+  /**
+   * Render a primitive value in this part
+   *
+   * Primitive values are rendered as textContent of a TextNode
+   */
+  _renderPrimitive(primitive) {
+    // If the previous value is equal to the primitive, do nothing
+    if (this.previousValue === primitive) {
       return;
     }
-    if (this.endMarker.previousSibling.nodeType === 3 && this.endMarker.previousSibling.previousSibling === this.startMarker) {
-      this.endMarker.previousSibling.textContent = text;
+    // If the currentNode is a TextNode, replace the content of that node
+    // Otherwise, create a new TextNode with the primitive value as content
+    if (this.currentNode.nodeType === 3) {
+      this.currentNode.textContent = primitive;
     } else {
-      this._setNode(document.createTextNode(text));
+      this._renderNode(document.createTextNode(primitive));
     }
   }
 
-  _setNode(node) {
-    if (this.previousValue === node) {
+  /**
+   * Render a DOM node in this part
+   */
+  _renderNode(node) {
+    // If node is already the current content node, do nothing
+    if (this.currentNode === node) {
       return;
     }
-    const parent = this.endMarker.parentNode;
-    // TODO: Fix this -  it swaps the order of nodes when swapping out document fragments
-    // Need to abstract this to a 'removeNodes' function that can also be used in render();
-    if (this.previousValue instanceof DocumentFragment) {
-      while (this.endMarker.previousSibling != this.startMarker) {
-        this.previousValue.appendChild(this.endMarker.previousSibling);
-      }
-    } else {
-      while (this.endMarker.previousSibling != this.startMarker) {
-        parent.removeChild(this.endMarker.previousSibling);
-      }
-    }
-
-    parent.insertBefore(node, this.endMarker);
-    this.previousValue = node;
+    this.parentNode.insertBefore(node, this.afterNode);
+    this.currentNode = node;
   }
 
-  _setTemplateResult(templateResult) {
+  /**
+   * Render a TemplateResult in this part
+   *
+   * Checks if this template has already been rendered in this part before.
+   * If so, it re-use that TemplateInstance
+   * If not, it create a new TemplateInstance
+   */
+  _renderTemplateResult(templateResult) {
     let instance = this.subTemplates.get(templateResult.template);
     if (!instance) {
       instance = new TemplateInstance(templateResult.template);
       this.subTemplates.set(templateResult.template, instance);
     }
-    if (instance.fragment !== this.previousNode) {
-      this._setNode(instance.fragment);
+    if (instance.fragment !== this.currentNode) {
+      this.clear();
+      this.parentNode.insertBefore(instance.fragment, this.afterNode);
+      instance.adopt(instance.fragment, this.parentNode);
+      this.currentNode = instance.fragment;
     }
-    instance.update(templateResult.values);
+    instance.render(templateResult.values);
+  }
+
+  /**
+   * Clear out the content of this NodePart
+   *
+   * If the current content is part of a DocumentFragment (it is the result of a TemplateResult or an Array)
+   * The current content is moved back into that fragment to be used again if the same fragment is rendered
+   * Otherwise, the current content is deleted permanently
+   */
+  clear() {
+    let nodeToRemove = (this.beforeNode && this.beforeNode.nextSibling) || this.parentNode.childNodes[0];
+    let nextNode;
+    if (this.currentNode instanceof DocumentFragment) {
+      while (nodeToRemove != this.afterNode) {
+        nextNode = nodeToRemove.nextSibling;
+        this.currentNode.appendChild(nodeToRemove);
+        nodeToRemove = nextNode;
+      }
+    } else {
+      while (nodeToRemove != this.afterNode) {
+        nextNode = nodeToRemove.nextSibling;
+        this.parentNode.removeChild(nodeToRemove);
+        nodeToRemove = nextNode;
+      }
+    }
+    this.currentNode = undefined;
+    this.previousValue = undefined;
   }
 }
 
@@ -127,7 +181,7 @@ export class CommentPart {
   constructor(placeholder) {
     this.node = placeholder;
   }
-  update(value) {
+  render(value) {
     this.node.textContent = value;
   }
 }
@@ -137,16 +191,16 @@ export class AttributePart {
     this.node = node;
     switch (attributeName[0]) {
       case '.':
-        this.update = this.updateProperty;
+        this.render = this.updateProperty;
       case '?':
-        this.update = this.update || this.updateBoolean;
+        this.render = this.render || this.updateBoolean;
       case '@':
-        this.update = this.update || this.updateEvent;
+        this.render = this.render || this.updateEvent;
         this.node.removeAttribute(attributeName);
         this.name = attributeName.slice(1);
         break;
       default:
-        this.update = this.updateAttribute;
+        this.render = this.updateAttribute;
         this.name = attributeName;
     }
   }

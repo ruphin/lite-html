@@ -23,7 +23,7 @@
  * SOFTWARE.
  */
 
-import { attributeMarker, commentMarker, nodeMarker, failFlag } from './markers.js';
+import { attributeMarker, commentMarker, nodeMarker } from './markers.js';
 
 // The second marker is to add a boolean attribute to the element
 // This is to easily test if a node has dynamic attributes by checking against that attribute

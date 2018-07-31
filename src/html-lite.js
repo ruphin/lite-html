@@ -23,24 +23,18 @@
  * SOFTWARE.
  */
 
-import { TemplateResult, TemplateInstance } from './lib/templates.js';
+import { TemplateResult } from './lib/templates.js';
+import { NodePart } from './lib/parts.js';
 
 export const html = (strings, ...values) => {
   return new TemplateResult(strings, values);
 };
 
 export const render = (templateResult, target) => {
-  let instance = target.__templateInstance;
-  // TODO: Do something smart when the template is different.
-  // Probably use some removeNodes function that re-appends nodes into the old fragment
-  if (!instance || instance.template !== templateResult.template) {
-    instance = new TemplateInstance(templateResult.template);
-    target.__templateInstance = instance;
-
-    target.innerHTML = '';
-    instance.update(templateResult.values);
-    target.appendChild(instance.fragment);
-  } else {
-    instance.update(templateResult.values);
+  let part = target.__nodePart;
+  if (!part) {
+    part = new NodePart(undefined, target);
+    target.__nodePart = part;
   }
+  part.render(templateResult);
 };
