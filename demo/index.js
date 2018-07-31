@@ -1,5 +1,4 @@
 import { html, render } from '../src/html-lite.js';
-import { parseTemplate, buildTemplate } from '../src/lib/template-parser.js';
 
 let todos = [];
 const container = document.getElementById('container');
@@ -26,10 +25,15 @@ const template = () => {
       <button attribute=${'something'} @click=${add}>Add todo</button>
       ${todos.map(
         todo => html`
-      <p .todo=${todo.id}>
-        <button @click=${remove}>X</button> - ${todo.text}</p>`
+        <p .todo=${todo.id}>
+          <button @click=${remove}>X</button> - ${todo.text}
+        </p>`
       )}
     `;
 };
+
+// const template = () => {
+//   return html`${[1]}`;
+// };
 
 render(template(), container);
