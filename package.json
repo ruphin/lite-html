@@ -1,6 +1,6 @@
 {
   "name": "lite-html",
-  "version": "0.0.0",
+  "version": "0.2.0",
   "description": "A re-implementation of lit-html",
   "main": "lite-html.js",
   "module": "lite-html.js",
