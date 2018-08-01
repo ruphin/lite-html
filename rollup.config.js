@@ -32,8 +32,8 @@ const license = `/**
 
 function htmlLite({ dest, format, uglified = false, transpiled = false }) {
   return {
-    input: 'src/html-lite.js',
-    output: { banner: license, file: dest, name: 'html-lite', format, sourcemap: true },
+    input: 'src/lite-html.js',
+    output: { banner: license, file: dest, name: 'lite-html', format, sourcemap: true },
     plugins: [
       transpiled &&
         commonjs({
@@ -92,8 +92,8 @@ const demo = {
 };
 
 const config = [
-  htmlLite({ dest: 'html-lite.es5.js', format: 'umd', transpiled: true }),
-  htmlLite({ dest: 'html-lite.js', format: 'es' }),
+  htmlLite({ dest: 'lite-html.es5.js', format: 'umd', transpiled: true }),
+  htmlLite({ dest: 'lite-html.js', format: 'es' }),
   test('lib/marker'),
   test('lib/node-walker'),
   test('lib/template-parser'),

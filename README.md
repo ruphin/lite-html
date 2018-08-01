@@ -1,6 +1,6 @@
-# html-lite
+# lite-html
 
-_A re-implementation of lit-html for learning purposes_
+_A re-implementation of lit-html_
 
 ---
 

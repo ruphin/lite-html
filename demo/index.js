@@ -1,4 +1,4 @@
-import { html, render } from '../src/html-lite.js';
+import { html, render } from '../src/lite-html.js';
 
 let todos = [];
 const container = document.getElementById('container');
@@ -31,9 +31,5 @@ const template = () => {
       )}
     `;
 };
-
-// const template = () => {
-//   return html`${[1]}`;
-// };
 
 render(template(), container);
