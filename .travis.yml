@@ -11,4 +11,4 @@ cache:
 before_script:
 - npm run build
 script:
-- xvfb-run wct --npm test/index.html
+- npm run test
