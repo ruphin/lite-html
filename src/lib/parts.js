@@ -30,8 +30,8 @@ const isArray = value => Array.isArray(value) || value[Symbol.iterator];
 
 export class NodePart {
   // currentNode OR parentNode  _must_ be defined
-  // If a parentNode is defined, this NodePart represents the entire content of the parent
   // If a currentNode is defined, this NodePart represents the position of that node in the tree
+  // If a only a parentNode is defined, this NodePart represents the entire content of the parent
   constructor(currentNode, parentNode) {
     this.iterableFragment = document.createDocumentFragment();
     this.iterableParts = [];
@@ -39,7 +39,6 @@ export class NodePart {
     this.previousValue = undefined;
 
     this.parentNode = currentNode ? currentNode.parentNode : parentNode;
-
     this.beforeNode = currentNode ? currentNode.previousSibling : undefined;
     this.afterNode = currentNode ? currentNode.nextSibling : undefined;
 
@@ -63,6 +62,47 @@ export class NodePart {
     }
     // TODO: something smart
     this.previousValue = value;
+  }
+
+  /**
+   * Render a primitive value in this part
+   *
+   * Primitive values are rendered as textContent of a TextNode
+   */
+  _renderPrimitive(primitive) {
+    // If the previous value is equal to the primitive, do nothing
+    if (this.previousValue === primitive) {
+      return;
+    }
+    // If the currentNode is a TextNode, replace the content of that node
+    // Otherwise, create a new TextNode with the primitive value as content
+    if (this.currentNode.nodeType === 3) {
+      this.currentNode.textContent = primitive;
+    } else {
+      this._renderNode(document.createTextNode(primitive));
+    }
+  }
+
+  /**
+   * Render a TemplateResult in this part
+   *
+   * Checks if this template has already been rendered in this part before.
+   * If so, it re-use that TemplateInstance
+   * If not, it create a new TemplateInstance
+   */
+  _renderTemplateResult(templateResult) {
+    let instance = this.subTemplates.get(templateResult.template);
+    if (!instance) {
+      instance = new TemplateInstance(templateResult.template);
+      this.subTemplates.set(templateResult.template, instance);
+    }
+    if (instance.fragment !== this.currentNode) {
+      this.clear();
+      this.parentNode.insertBefore(instance.fragment, this.afterNode);
+      instance.adopt(instance.fragment, this.parentNode);
+      this.currentNode = instance.fragment;
+    }
+    instance.render(templateResult.values);
   }
 
   /**
@@ -97,25 +137,6 @@ export class NodePart {
   }
 
   /**
-   * Render a primitive value in this part
-   *
-   * Primitive values are rendered as textContent of a TextNode
-   */
-  _renderPrimitive(primitive) {
-    // If the previous value is equal to the primitive, do nothing
-    if (this.previousValue === primitive) {
-      return;
-    }
-    // If the currentNode is a TextNode, replace the content of that node
-    // Otherwise, create a new TextNode with the primitive value as content
-    if (this.currentNode.nodeType === 3) {
-      this.currentNode.textContent = primitive;
-    } else {
-      this._renderNode(document.createTextNode(primitive));
-    }
-  }
-
-  /**
    * Render a DOM node in this part
    */
   _renderNode(node) {
@@ -128,25 +149,24 @@ export class NodePart {
   }
 
   /**
-   * Render a TemplateResult in this part
-   *
-   * Checks if this template has already been rendered in this part before.
-   * If so, it re-use that TemplateInstance
-   * If not, it create a new TemplateInstance
+   * Render the result of a promise in this part
    */
-  _renderTemplateResult(templateResult) {
-    let instance = this.subTemplates.get(templateResult.template);
-    if (!instance) {
-      instance = new TemplateInstance(templateResult.template);
-      this.subTemplates.set(templateResult.template, instance);
+  _renderPromise(promise) {
+    // If we rendered this Promise already, do nothing
+    // TODO: Account for rendering promise -> other -> promise
+    if (this.previousValue === promise || this.previousPromise === promise) {
+      return;
     }
-    if (instance.fragment !== this.currentNode) {
-      this.clear();
-      this.parentNode.insertBefore(instance.fragment, this.afterNode);
-      instance.adopt(instance.fragment, this.parentNode);
-      this.currentNode = instance.fragment;
-    }
-    instance.render(templateResult.values);
+    this.clear();
+    this.previousPromise = promise;
+    // When the promise resolves, render the value of that promise
+    promise.then(value => {
+      // If the part rendered another value in the meantime, abandon the promise
+      if (this.previousValue !== value) {
+        return;
+      }
+      this.render(value);
+    });
   }
 
   /**
@@ -154,7 +174,7 @@ export class NodePart {
    *
    * If the current content is part of a DocumentFragment (it is the result of a TemplateResult or an Array)
    * The current content is moved back into that fragment to be used again if the same fragment is rendered
-   * Otherwise, the current content is deleted permanently
+   * Otherwise, the current content is removed from the DOM permanently
    */
   clear() {
     let nodeToRemove = (this.beforeNode && this.beforeNode.nextSibling) || this.parentNode.childNodes[0];
@@ -181,6 +201,7 @@ export class CommentPart {
   constructor(placeholder) {
     this.node = placeholder;
   }
+
   render(value) {
     this.node.textContent = value;
   }
@@ -192,31 +213,39 @@ export class AttributePart {
     switch (attributeName[0]) {
       case '.':
         this.render = this.updateProperty;
+        this.node.removeAttribute(attributeName);
+        this.attributeName = attributeName.slice(1);
       case '?':
         this.render = this.render || this.updateBoolean;
+        this.node.removeAttribute(attributeName);
+        this.attributeName = attributeName.slice(1);
       case '@':
         this.render = this.render || this.updateEvent;
         this.node.removeAttribute(attributeName);
-        this.name = attributeName.slice(1);
+        this.attributeName = attributeName.slice(1);
         break;
       default:
         this.render = this.updateAttribute;
-        this.name = attributeName;
+        this.attributeName = attributeName;
     }
   }
+
   updateProperty(value) {
-    this.node[this.name] = value;
+    this.node[this.attributeName] = value;
   }
+
   updateBoolean(value) {
-    value ? this.node.setAttribute(this.name, '') : this.node.removeAttribute(this.name);
+    value ? this.node.setAttribute(this.attributeName, '') : this.node.removeAttribute(this.attributeName);
   }
+
   updateEvent(value) {
     if (typeof value === 'function') {
       // TODO: Remember this event listener and remove it again if it changes
-      this.node.addEventListener(this.name, value);
+      this.currentEventListener = this.node.addEventListener(this.attributeName, value);
     }
   }
+
   updateAttribute(value) {
-    this.node.setAttribute(this.name, value);
+    this.node.setAttribute(this.attributeName, value);
   }
 }
