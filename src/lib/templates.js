@@ -97,45 +97,21 @@ export class TemplateResult {
  *   The parts that render into this template instance
  */
 export class TemplateInstance {
-  constructor(template) {
+  constructor(template, parent) {
     this.template = template;
-    // this.partTemplates = new Map();
     this.fragment = template.element.content.cloneNode(true);
-    this.initializeParts();
-  }
 
-  /**
-   * Creates new Parts based on the part definitions set on the Template
-   * These parts are stored in this.parts
-   */
-  initializeParts() {
+    // Create new Parts based on the part definitions set on the Template
     const parts = this.template.parts.map(part => {
       let node = this.fragment;
       part.path.forEach(nodeIndex => {
         node = node.childNodes[nodeIndex];
       });
       part.node = node;
+      part.parent = parent;
       return part;
     });
-    this.parts = parts.map(part => new part.type(part.node, part.attribute));
-  }
-
-  /**
-   * Move all parts in this instance that are children of the oldParent to the newParent
-   *
-   * @param {[Node]} oldParent
-   *   The node that the children are moved from
-   * @param {[Node]} newParent
-   *   The node that the children are adopted by
-   *
-   * This function is needed to make sure all parts are aware of their parents.
-   * Parts in the root of a template have a parent that changes whenever the template is stamped elsewhere.
-   * This function is used to set the new parent on these Parts when this template is adopted by another node.
-   */
-  adopt(oldParent, newParent) {
-    this.parts.filter(part => part.parentNode === undefined || part.parentNode === oldParent).forEach(part => {
-      part.parentNode = newParent;
-    });
+    this.parts = parts.map(part => new part.type(part));
   }
 
   /**

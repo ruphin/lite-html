@@ -50,7 +50,7 @@ export const render = (content, target) => {
   let part = target.__nodePart;
   if (!part) {
     // If it does not, create a new NodePart
-    part = new NodePart(undefined, target);
+    part = new NodePart({ parent: target });
     target.__nodePart = part;
   }
   // Task the NodePart of this target to render the content

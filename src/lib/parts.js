@@ -29,20 +29,24 @@ const isPrimitive = value => !(typeof value === 'object' || typeof value === 'fu
 const isArray = value => Array.isArray(value) || value[Symbol.iterator];
 
 export class NodePart {
-  // currentNode OR parentNode  _must_ be defined
-  // If a currentNode is defined, this NodePart represents the position of that node in the tree
-  // If a only a parentNode is defined, this NodePart represents the entire content of the parent
-  constructor(currentNode, parentNode) {
+  // node OR parent _must_ be defined
+  // If a node is defined, this NodePart represents the position of that node in the tree
+  // If a only a parent is defined, this NodePart represents the entire content of the parent
+  constructor({ node, parent }) {
     this.iterableFragment = document.createDocumentFragment();
     this.iterableParts = [];
-    this.currentNode = currentNode;
+    this.node = node;
     this.previousValue = undefined;
 
-    this.parentNode = currentNode ? currentNode.parentNode : parentNode;
-    this.beforeNode = currentNode ? currentNode.previousSibling : undefined;
-    this.afterNode = currentNode ? currentNode.nextSibling : undefined;
+    this.parentNode = node ? node.parentNode : parent;
+    this.beforeNode = node && node.previousSibling;
+    this.afterNode = node && node.nextSibling;
 
-    this.subTemplates = new Map();
+    if (this.parentNode instanceof DocumentFragment) {
+      this.parentNode = parent;
+    }
+
+    this.templateInstances = new Map();
   }
 
   render(value) {
@@ -74,10 +78,10 @@ export class NodePart {
     if (this.previousValue === primitive) {
       return;
     }
-    // If the currentNode is a TextNode, replace the content of that node
+    // If the node is a TextNode, replace the content of that node
     // Otherwise, create a new TextNode with the primitive value as content
-    if (this.currentNode.nodeType === 3) {
-      this.currentNode.textContent = primitive;
+    if (this.node.nodeType === 3) {
+      this.node.textContent = primitive;
     } else {
       this._renderNode(document.createTextNode(primitive));
     }
@@ -91,16 +95,15 @@ export class NodePart {
    * If not, it create a new TemplateInstance
    */
   _renderTemplateResult(templateResult) {
-    let instance = this.subTemplates.get(templateResult.template);
+    let instance = this.templateInstances.get(templateResult.template);
     if (!instance) {
-      instance = new TemplateInstance(templateResult.template);
-      this.subTemplates.set(templateResult.template, instance);
+      instance = new TemplateInstance(templateResult.template, this.parentNode);
+      this.templateInstances.set(templateResult.template, instance);
     }
-    if (instance.fragment !== this.currentNode) {
+    if (instance.fragment !== this.node) {
       this.clear();
       this.parentNode.insertBefore(instance.fragment, this.afterNode);
-      instance.adopt(instance.fragment, this.parentNode);
-      this.currentNode = instance.fragment;
+      this.node = instance.fragment;
     }
     instance.render(templateResult.values);
   }
@@ -119,11 +122,11 @@ export class NodePart {
     this.parentNode.insertBefore(this.iterableFragment, this.afterNode);
 
     while (this.iterableParts.length < iterable.length) {
-      const placeholder = document.createComment('');
+      const node = document.createComment('');
       const delimiter = document.createTextNode('');
       this.parentNode.insertBefore(delimiter, this.afterNode);
-      this.parentNode.insertBefore(placeholder, delimiter);
-      this.iterableParts.push(new NodePart(placeholder, this.parentNode));
+      this.parentNode.insertBefore(node, delimiter);
+      this.iterableParts.push(new NodePart({ node, parent: this.parentNode }));
     }
 
     this.iterableParts.forEach((part, index) => {
@@ -141,11 +144,11 @@ export class NodePart {
    */
   _renderNode(node) {
     // If node is already the current content node, do nothing
-    if (this.currentNode === node) {
+    if (this.node === node) {
       return;
     }
     this.parentNode.insertBefore(node, this.afterNode);
-    this.currentNode = node;
+    this.node = node;
   }
 
   /**
@@ -179,10 +182,10 @@ export class NodePart {
   clear() {
     let nodeToRemove = (this.beforeNode && this.beforeNode.nextSibling) || this.parentNode.childNodes[0];
     let nextNode;
-    if (this.currentNode instanceof DocumentFragment) {
+    if (this.node instanceof DocumentFragment) {
       while (nodeToRemove != this.afterNode) {
         nextNode = nodeToRemove.nextSibling;
-        this.currentNode.appendChild(nodeToRemove);
+        this.node.appendChild(nodeToRemove);
         nodeToRemove = nextNode;
       }
     } else {
@@ -192,14 +195,14 @@ export class NodePart {
         nodeToRemove = nextNode;
       }
     }
-    this.currentNode = undefined;
+    this.node = undefined;
     this.previousValue = undefined;
   }
 }
 
 export class CommentPart {
-  constructor(placeholder) {
-    this.node = placeholder;
+  constructor({ node }) {
+    this.node = node;
   }
 
   render(value) {
@@ -208,25 +211,25 @@ export class CommentPart {
 }
 
 export class AttributePart {
-  constructor(node, attributeName) {
+  constructor({ node, attribute }) {
     this.node = node;
-    switch (attributeName[0]) {
+    switch (attribute[0]) {
       case '.':
         this.render = this.updateProperty;
-        this.node.removeAttribute(attributeName);
-        this.attributeName = attributeName.slice(1);
+        this.node.removeAttribute(attribute);
+        this.attributeName = attribute.slice(1);
       case '?':
         this.render = this.render || this.updateBoolean;
-        this.node.removeAttribute(attributeName);
-        this.attributeName = attributeName.slice(1);
+        this.node.removeAttribute(attribute);
+        this.attributeName = attribute.slice(1);
       case '@':
         this.render = this.render || this.updateEvent;
-        this.node.removeAttribute(attributeName);
-        this.attributeName = attributeName.slice(1);
+        this.node.removeAttribute(attribute);
+        this.attributeName = attribute.slice(1);
         break;
       default:
         this.render = this.updateAttribute;
-        this.attributeName = attributeName;
+        this.attributeName = attribute;
     }
   }
 
