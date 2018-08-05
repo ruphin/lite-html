@@ -80,7 +80,7 @@ export class NodePart {
     }
     // If the node is a TextNode, replace the content of that node
     // Otherwise, create a new TextNode with the primitive value as content
-    if (this.node.nodeType === 3) {
+    if (this.node && this.node.nodeType === 3) {
       this.node.textContent = primitive;
     } else {
       this._renderNode(document.createTextNode(primitive));
