@@ -3,7 +3,7 @@ sudo: required
 dist: trusty
 node_js: '9'
 addons:
-  firefox: '60.0'
+  firefox: latest
   chrome: stable
 cache:
   directories:
@@ -11,4 +11,4 @@ cache:
 before_script:
 - npm run build
 script:
-- karma start --browsers ChromeHeadless,FirefoxHeadless
+- karma start --browsers ChromeHeadless
