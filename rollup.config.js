@@ -44,22 +44,26 @@ function htmlLite({ dest, format, uglified = false, transpiled = false }) {
           presets: [['env', { modules: false }]],
           plugins: ['external-helpers']
         }),
+      // Remove @license comments
       !uglified &&
         cleanup({
           maxEmptyLines: 1,
-          // This removes redundant @license comments
           comments: [/^[\*\s]*[^@\*\s]/]
         }),
-      uglified && terser({ warnings: true, output: { preamble: license } }),
+      uglified &&
+        terser({
+          warnings: true,
+          output: { preamble: license }
+        }),
       filesize()
     ].filter(Boolean)
   };
 }
 
-function test(file) {
+const index = file => {
   return {
-    input: `test/${file}.js`,
-    output: { banner: license, file: `test/${file}.es5.js`, format: 'iife', name: 'test' },
+    input: `${file}.js`,
+    output: { banner: license, file: `${file}.es5.js`, format: 'iife', name: file.split('/').slice(-1)[0] },
     plugins: [
       commonjs({
         include: 'node_modules/**'
@@ -67,37 +71,21 @@ function test(file) {
       babel({
         presets: [['env', { modules: false }]],
         plugins: ['external-helpers']
+      }),
+      // Remove @license comments
+      cleanup({
+        maxEmptyLines: 1,
+        comments: [/^[\*\s]*[^@\*\s]/]
       })
     ]
   };
-}
-
-const demo = {
-  input: `demo/index.js`,
-  output: { banner: license, file: `demo/index.es5.js`, format: 'iife', name: 'demo' },
-  plugins: [
-    commonjs({
-      include: 'node_modules/**'
-    }),
-    cleanup({
-      maxEmptyLines: 1,
-      // This removes redundant @license comments
-      comments: [/^[\*\s]*[^@\*\s]/]
-    }),
-    babel({
-      presets: [['env', { modules: false }]],
-      plugins: ['external-helpers']
-    })
-  ]
 };
 
 const config = [
   htmlLite({ dest: 'lite-html.es5.js', format: 'umd', transpiled: true }),
   htmlLite({ dest: 'lite-html.js', format: 'es' }),
-  test('lib/marker'),
-  test('lib/node-walker'),
-  test('lib/template-parser'),
-  demo
+  index('test/index'),
+  index('demo/index')
 ];
 
 export default config;

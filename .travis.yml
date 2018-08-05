@@ -11,4 +11,4 @@ cache:
 before_script:
 - npm run build
 script:
-- npm run test
+- karma start --browsers ChromeHeadless,Firefox

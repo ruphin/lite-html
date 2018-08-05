@@ -228,5 +228,28 @@ describe('templateParser', () => {
       expect(buildTemplate(html`<div a=">" b=${0}></div>`).content.childNodes[0].hasAttribute(failFlag)).to.be.true;
       expect(buildTemplate(html`<div a=">" b="${0}"></div>`).content.childNodes[0].hasAttribute(failFlag)).to.be.true;
     });
+
+    it(`adds the attributeMarker attribute to nodes with a dynamic attribute`, () => {
+      expect(buildTemplate(html`<div a=${0}></div>`).content.childNodes[0].hasAttribute(attributeMarker)).to.be.true;
+      expect(buildTemplate(html`<div a="1"></div>`).content.childNodes[0].hasAttribute(attributeMarker)).to.be.false;
+      expect(buildTemplate(html`<div a=${0} b=${0}></div>`).content.childNodes[0].hasAttribute(attributeMarker)).to.be.true;
+      expect(buildTemplate(html`<div a="1" b=${0}></div>`).content.childNodes[0].hasAttribute(attributeMarker)).to.be.true;
+    });
+
+    it(`assigns the attributeMarker value to dynamic attributes `, () => {
+      expect(buildTemplate(html`<div a=${0}></div>`).content.childNodes[0].getAttribute('a')).to.be.equal(attributeMarker);
+      expect(buildTemplate(html`<div a=${0} b="1"></div>`).content.childNodes[0].getAttribute('a')).to.be.equal(attributeMarker);
+      expect(buildTemplate(html`<div a="1" b=${0}></div>`).content.childNodes[0].getAttribute('b')).to.be.equal(attributeMarker);
+      expect(buildTemplate(html`<div a=${0} b="1" c="1"></div>`).content.childNodes[0].getAttribute('a')).to.be.equal(attributeMarker);
+      expect(buildTemplate(html`<div a=${0} b=${0} c="1"></div>`).content.childNodes[0].getAttribute('a')).to.be.equal(attributeMarker);
+      expect(buildTemplate(html`<div a=${0} b=${0} c="1"></div>`).content.childNodes[0].getAttribute('b')).to.be.equal(attributeMarker);
+      expect(buildTemplate(html`<div a=${0} b="1" c=${0}></div>`).content.childNodes[0].getAttribute('a')).to.be.equal(attributeMarker);
+      expect(buildTemplate(html`<div a=${0} b="1" c=${0}></div>`).content.childNodes[0].getAttribute('c')).to.be.equal(attributeMarker);
+      expect(buildTemplate(html`<div a="1" b=${0} c=${0}></div>`).content.childNodes[0].getAttribute('b')).to.be.equal(attributeMarker);
+      expect(buildTemplate(html`<div a="1" b=${0} c=${0}></div>`).content.childNodes[0].getAttribute('c')).to.be.equal(attributeMarker);
+      expect(buildTemplate(html`<div a=${0} b=${0} c=${0}></div>`).content.childNodes[0].getAttribute('a')).to.be.equal(attributeMarker);
+      expect(buildTemplate(html`<div a=${0} b=${0} c=${0}></div>`).content.childNodes[0].getAttribute('b')).to.be.equal(attributeMarker);
+      expect(buildTemplate(html`<div a=${0} b=${0} c=${0}></div>`).content.childNodes[0].getAttribute('c')).to.be.equal(attributeMarker);
+    });
   });
 });
