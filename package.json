@@ -29,7 +29,7 @@
   "scripts": {
     "build": "rollup -c",
     "dev": "browser-sync start --config browsersync.conf.js",
-    "release": "np",
+    "release": "npm run build && np",
     "test": "karma start",
     "guard": "karma start --no-single-run"
   },
