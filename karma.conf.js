@@ -15,6 +15,10 @@ module.exports = function(config) {
       DockerChromeHeadless: {
         base: 'ChromeHeadless',
         flags: ['--disable-gpu', '--no-sandbox']
+      },
+      FirefoxHeadless: {
+        base: 'Firefox',
+        flags: ['-headless']
       }
     }
   });
