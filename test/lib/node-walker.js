@@ -83,7 +83,7 @@ describe('nodeWalker', () => {
 
     it(`Preserves original attribute names`, () => {
       const strings = html`
-        <div 
+        <div
           a=${0}
           a-b=${1}
           👍=${2}
@@ -105,7 +105,7 @@ describe('nodeWalker', () => {
 
     it(`Preserves prefixes in the attribute name`, () => {
       const strings = html`
-        <div 
+        <div
           .a=${0}
           ?a=${1}
           @a=${2}>
@@ -115,6 +115,52 @@ describe('nodeWalker', () => {
       expect(parts[0].attribute).to.equal('.a');
       expect(parts[1].attribute).to.equal('?a');
       expect(parts[2].attribute).to.equal('@a');
+    });
+
+    it(`throws an Error when an attribute contains the '>' character`, () => {
+      let strings = html`
+        <div
+          a=">"
+          b=${0}>
+        </div>`;
+      let template = buildTemplate(strings);
+      expect(() => findParts(strings, template)).to.throw();
+
+      strings = html`
+        <div
+          a=">"
+          b="${0}">
+        </div>`;
+      template = buildTemplate(strings);
+      expect(() => findParts(strings, template)).to.throw();
+    });
+
+    it(`throws an Error when attributes are assigned to more than once`, () => {
+      let strings = html`
+        <div
+          a=${0}
+          a=${1}>
+        </div>`;
+      let template = buildTemplate(strings);
+      expect(() => findParts(strings, template)).to.throw();
+
+      strings = html`
+        <div
+          a="0"
+          a=${1}>
+        </div>`;
+      template = buildTemplate(strings);
+      expect(() => findParts(strings, template)).to.throw();
+
+      // We cannot detect this case, but it does not break rendering
+      // The only side-effect is that the static assignment to the variable is ignored
+      strings = html`
+        <div
+          a=${0}
+          a="1">
+        </div>`;
+      template = buildTemplate(strings);
+      expect(() => findParts(strings, template)).to.not.throw();
     });
   });
 });

@@ -116,7 +116,7 @@ describe('templateParser', () => {
       expect(parseTemplate(html`<div a=">" b=${0}></div>`)).to.equal(`<div a=">" b=${nodeMarkerTag}></div>`);
     });
 
-    it(`raises on incorrect attribute tag usage`, () => {
+    it(`throws an Error on incorrect attribute tag usage`, () => {
       expect(() => parseTemplate(html`<div a="${0}">`)).to.throw();
       expect(() => parseTemplate(html`<div a="a${0}">`)).to.throw();
       expect(() => parseTemplate(html`<div a="${0}a">`)).to.throw();

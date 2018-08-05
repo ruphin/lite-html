@@ -72,5 +72,8 @@ export const findParts = (strings, template) => {
   };
 
   recursiveIndex(template.content, []);
+  if (parts.length < strings.length - 1) {
+    throw new Error("Double attribute assignments are not allowed: '<div a=${0} a=${0}>'");
+  }
   return parts;
 };
