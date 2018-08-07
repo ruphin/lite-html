@@ -26,6 +26,7 @@
 import { Template, TemplateResult, TemplateInstance } from '../../src/lib/templates.js';
 import { findParts } from '../../src/lib/node-walker.js';
 import { buildTemplate } from '../../src/lib/template-parser.js';
+import { AttributePart, CommentPart, NodePart } from '../../src/lib/parts.js';
 
 const expect = chai.expect;
 const html = (strings, ...values) => new TemplateResult(strings, values);
@@ -86,24 +87,73 @@ describe('templates', () => {
     });
   });
 
+  const fragmentString = documentFragment => [].map.call(documentFragment.childNodes, node => node.outerHTML).join('');
+
   describe('TemplateInstance', () => {
-    it(`contains a Template`, () => {
+    it(`clones the template document fragment from the source Template`, () => {
       const strings = htmlStrings`<div>${0}</div>`;
       const template = new Template(strings);
-      expect(template.strings).to.deep.equal(strings);
+      const instance = new TemplateInstance(template);
+      expect(fragmentString(template.element.content)).to.equal(fragmentString(instance.fragment));
+
+      instance.fragment.appendChild(document.createElement('div'));
+      expect(fragmentString(template.element.content)).to.not.equal(fragmentString(instance.fragment));
     });
 
-    it(`constructs a template element that holds a DOM template`, () => {
-      const strings = htmlStrings`<div>${0}</div>`;
+    it(`constructs Part instances according to the definitions from the Template`, () => {
+      const strings = htmlStrings`
+        <div id=parent0>
+          ${0}
+          <div id=parent1>
+            ${1}
+            ${2}
+          </div>
+          <div id=parent3>
+            ${3}
+          </div>
+        </div>
+        ${4}
+        <div id=node5 a=${5}>
+          <div id=node6 .a=${6} ?b=${7}>
+            <!-- ${8} -->
+          <div>
+        </div>
+        `;
       const template = new Template(strings);
-      expect(template.element instanceof HTMLTemplateElement).to.be.true;
+      const parent = document.createElement('div');
+      parent.id = 'root';
+      const instance = new TemplateInstance(template, parent);
+
+      expect(instance.parts.length).to.equal(9);
+
+      expect(instance.parts[0] instanceof NodePart).to.be.true;
+      expect(instance.parts[0].parentNode.id).to.equal('parent0');
+      expect(instance.parts[1] instanceof NodePart).to.be.true;
+      expect(instance.parts[1].parentNode.id).to.equal('parent1');
+      expect(instance.parts[2] instanceof NodePart).to.be.true;
+      expect(instance.parts[2].parentNode.id).to.equal('parent1');
+      expect(instance.parts[3] instanceof NodePart).to.be.true;
+      expect(instance.parts[3].parentNode.id).to.equal('parent3');
+      expect(instance.parts[4] instanceof NodePart).to.be.true;
+      expect(instance.parts[4].parentNode.id).to.equal('root');
+      expect(instance.parts[5] instanceof AttributePart).to.be.true;
+      expect(instance.parts[5].node.id).to.equal('node5');
+      expect(instance.parts[6] instanceof AttributePart).to.be.true;
+      expect(instance.parts[6].node.id).to.equal('node6');
+      expect(instance.parts[6].node.parentNode.id).to.equal('node5');
+      expect(instance.parts[7] instanceof AttributePart).to.be.true;
+      expect(instance.parts[7].node.id).to.equal('node6');
+      expect(instance.parts[8] instanceof CommentPart).to.be.true;
+      expect(instance.parts[8].node.parentNode.id).to.equal('node6');
     });
 
-    it(`computes the parts for the template`, () => {
-      const strings = htmlStrings`<div>${0}</div>`;
-      const templateElement = buildTemplate(strings);
+    it(`calls 'render' on the parts with the correct values`, () => {
+      const strings = htmlStrings`${3}${3}${3}`;
       const template = new Template(strings);
-      expect(template.parts).to.deep.equal(findParts(strings, templateElement));
+      const instance = new TemplateInstance(template);
+      instance.parts.forEach(part => (part.render = value => (part.__renderCalledWith = value)));
+      instance.render([0, 1, 2]);
+      expect(instance.parts.every((part, index) => part.__renderCalledWith === index)).to.be.true;
     });
   });
 });
