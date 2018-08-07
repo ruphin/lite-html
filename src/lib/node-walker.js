@@ -55,9 +55,9 @@ export const findParts = (strings, template) => {
         node.removeAttribute(attributeMarker);
 
         const attributes = Array.from(node.attributes);
-        const dynamicAttributes = attributes.filter(attribute => attribute.value === attributeMarker);
+        const dynamicAttributes = attributes.filter(attribute => attribute.value === attributeMarker).length;
 
-        for (let i = 0; i < dynamicAttributes.length; i++) {
+        for (let i = 0; i < dynamicAttributes; i++) {
           const attributeMatch = lastAttributeNameRegex.exec(strings[parts.length]);
           const attribute = attributeMatch[1];
           parts.push({ type: AttributePart, path, attribute });

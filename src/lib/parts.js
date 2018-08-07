@@ -38,13 +38,9 @@ export class NodePart {
     this.node = node;
     this.previousValue = undefined;
 
-    this.parentNode = node ? node.parentNode : parent;
+    this.parentNode = node && !(node.parentNode instanceof DocumentFragment) ? node.parentNode : parent;
     this.beforeNode = node && node.previousSibling;
     this.afterNode = node && node.nextSibling;
-
-    if (this.parentNode instanceof DocumentFragment) {
-      this.parentNode = parent;
-    }
 
     this.templateInstances = new Map();
   }
@@ -215,40 +211,38 @@ export class AttributePart {
     this.node = node;
     switch (attribute[0]) {
       case '.':
-        this.render = this.updateProperty;
-        this.node.removeAttribute(attribute);
-        this.attributeName = attribute.slice(1);
+        this.render = this._renderProperty;
       case '?':
-        this.render = this.render || this.updateBoolean;
-        this.node.removeAttribute(attribute);
-        this.attributeName = attribute.slice(1);
+        this.render = this.render || this._renderBoolean;
       case '@':
-        this.render = this.render || this.updateEvent;
+        this.render = this.render || this._renderEvent;
         this.node.removeAttribute(attribute);
-        this.attributeName = attribute.slice(1);
+        this.name = attribute.slice(1);
         break;
       default:
-        this.render = this.updateAttribute;
-        this.attributeName = attribute;
+        this.render = this._renderAttribute;
+        this.name = attribute;
     }
   }
 
-  updateProperty(value) {
-    this.node[this.attributeName] = value;
+  _renderProperty(value) {
+    this.node[this.name] = value;
   }
 
-  updateBoolean(value) {
-    value ? this.node.setAttribute(this.attributeName, '') : this.node.removeAttribute(this.attributeName);
+  _renderBoolean(boolean) {
+    boolean ? this.node.setAttribute(this.name, '') : this.node.removeAttribute(this.name);
   }
 
-  updateEvent(value) {
-    if (typeof value === 'function') {
-      // TODO: Remember this event listener and remove it again if it changes
-      this.currentEventListener = this.node.addEventListener(this.attributeName, value);
+  _renderEvent(listener) {
+    if (this._currentEventListener === listener) {
+      return;
     }
+    this.node.removeEventListener(this.name, this._currentEventListener);
+    this.node.addEventListener(this.name, listener);
+    this._currentEventListener = listener;
   }
 
-  updateAttribute(value) {
-    this.node.setAttribute(this.attributeName, value);
+  _renderAttribute(string) {
+    this.node.setAttribute(this.name, string);
   }
 }
