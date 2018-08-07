@@ -30,7 +30,7 @@ const license = `/**
  */
 `;
 
-function htmlLite({ dest, format, uglified = false, transpiled = false }) {
+const htmlLite = ({ dest, format, uglified = false, transpiled = false }) => {
   return {
     input: 'src/lite-html.js',
     output: { banner: license, file: dest, name: 'lite-html', format, sourcemap: true },
@@ -53,12 +53,15 @@ function htmlLite({ dest, format, uglified = false, transpiled = false }) {
       uglified &&
         terser({
           warnings: true,
+          mangle: {
+            module: true
+          },
           output: { preamble: license }
         }),
       filesize()
     ].filter(Boolean)
   };
-}
+};
 
 const index = file => {
   return {
@@ -84,6 +87,7 @@ const index = file => {
 const config = [
   htmlLite({ dest: 'lite-html.es5.js', format: 'umd', transpiled: true }),
   htmlLite({ dest: 'lite-html.js', format: 'es' }),
+  htmlLite({ dest: 'lite-html.min.js', format: 'es', uglified: true }),
   index('test/index'),
   index('demo/index')
 ];
