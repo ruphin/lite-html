@@ -91,8 +91,7 @@ describe('templates', () => {
 
   describe('TemplateInstance', () => {
     it(`clones the template document fragment from the source Template`, () => {
-      const strings = htmlStrings`<div>${0}</div>`;
-      const template = new Template(strings);
+      const template = html`<div>${0}</div>`.template;
       const instance = new TemplateInstance(template);
       expect(fragmentString(template.element.content)).to.equal(fragmentString(instance.fragment));
 
@@ -101,7 +100,7 @@ describe('templates', () => {
     });
 
     it(`constructs Part instances according to the definitions from the Template`, () => {
-      const strings = htmlStrings`
+      const template = html`
         <div id=parent0>
           ${0}
           <div id=parent1>
@@ -118,8 +117,7 @@ describe('templates', () => {
             <!-- ${8} -->
           <div>
         </div>
-        `;
-      const template = new Template(strings);
+        `.template;
       const parent = document.createElement('div');
       parent.id = 'root';
       const instance = new TemplateInstance(template, parent);
@@ -148,8 +146,7 @@ describe('templates', () => {
     });
 
     it(`calls 'render' on the parts with the correct values`, () => {
-      const strings = htmlStrings`${3}${3}${3}`;
-      const template = new Template(strings);
+      const template = html`${3}${3}${3}`.template;
       const instance = new TemplateInstance(template);
       instance.parts.forEach(part => (part.render = value => (part.__renderCalledWith = value)));
       instance.render([0, 1, 2]);

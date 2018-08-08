@@ -25,7 +25,7 @@
 
 import { TemplateResult, TemplateInstance } from './templates.js';
 
-export const isPrimitive = value => value == null || !(typeof value === 'object' || typeof value === 'function');
+export const isSerializable = value => typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
 export const isArray = nonPrimitive => Array.isArray(nonPrimitive) || nonPrimitive[Symbol.iterator];
 
 export const noChange = {};
@@ -38,7 +38,7 @@ export class NodePart {
     this.iterableFragment = document.createDocumentFragment();
     this.iterableParts = [];
     this.node = node;
-    this.previousValue = undefined;
+    this.previousValue = {}; // PreviousValue is an object so any value will effectively be different
 
     this.parentNode = node && !(node.parentNode instanceof DocumentFragment) ? node.parentNode : parent;
     this.beforeNode = node && node.previousSibling;
@@ -51,8 +51,10 @@ export class NodePart {
     if (value === noChange) {
       return;
     }
-    if (isPrimitive(value)) {
-      this._renderPrimitive(value);
+    if (value == null) {
+      this.clear();
+    } else if (isSerializable(value)) {
+      this._renderText(value);
     } else if (value instanceof TemplateResult) {
       this._renderTemplateResult(value);
     } else if (isArray(value)) {
@@ -62,7 +64,7 @@ export class NodePart {
     } else if (value.then !== undefined) {
       this._renderPromise(value);
     } else {
-      this._renderPrimitive(String(value));
+      this._renderText(String(value));
       this.previousValue = String(value);
     }
     // TODO: something smart
@@ -74,17 +76,17 @@ export class NodePart {
    *
    * Primitive values are rendered as textContent of a TextNode
    */
-  _renderPrimitive(primitive) {
+  _renderText(text) {
     // If the previous value is equal to the primitive, do nothing
-    if (this.previousValue === primitive) {
+    if (this.previousValue === text) {
       return;
     }
     // If the node is a TextNode, replace the content of that node
     // Otherwise, create a new TextNode with the primitive value as content
     if (this.node && this.node.nodeType === 3) {
-      this.node.textContent = primitive;
+      this.node.textContent = text;
     } else {
-      this._renderNode(document.createTextNode(primitive));
+      this._renderNode(document.createTextNode(text));
     }
   }
 
@@ -148,6 +150,7 @@ export class NodePart {
     if (this.node === node) {
       return;
     }
+    this.clear();
     this.parentNode.insertBefore(node, this.afterNode);
     this.node = node;
   }
@@ -201,6 +204,7 @@ export class NodePart {
   }
 }
 
+// The node in the CommentPart constructor must be a CommentNode
 export class CommentPart {
   constructor({ node }) {
     this.node = node;
