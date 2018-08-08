@@ -27,6 +27,7 @@ import { isSerializable, isArray, AttributePart, CommentPart, NodePart } from '.
 import { TemplateResult } from '../../src/lib/templates.js';
 
 const html = (strings, ...values) => new TemplateResult(strings, values);
+const fragmentString = documentFragment => [].map.call(documentFragment.childNodes, node => node.outerHTML).join('');
 
 const expect = chai.expect;
 
@@ -235,24 +236,421 @@ describe('parts', () => {
       expect(part.parentNode === parent).to.be.true;
     });
 
+    describe('clear', () => {
+      it(`removes nodes that this NodePart represents from the DOM`, () => {
+        {
+          const { node, parent } = setupNodes();
+          const part = new NodePart({ node });
+          part.clear();
+          expect(parent.outerHTML).to.equal('<div><span></span><span></span></div>');
+        }
+        {
+          const { parent } = setupNodes();
+          const part = new NodePart({ parent });
+          part.clear();
+          expect(parent.outerHTML).to.equal('<div></div>');
+        }
+      });
+
+      it(`moves nodes back into the DocumentFragment when clearing after rendering a TemplateResult`, () => {
+        {
+          const { node, parent } = setupNodes();
+          const part = new NodePart({ node });
+          const templateResult = html`<ul><li></li></ul>`;
+          part.render(templateResult);
+
+          const templateInstance = part.templateInstances.get(templateResult.template);
+          expect(fragmentString(templateInstance.fragment)).to.equal('');
+          expect(parent.outerHTML).to.equal('<div><span></span><ul><li></li></ul><span></span></div>');
+          part.clear();
+          expect(fragmentString(templateInstance.fragment)).to.equal('<ul><li></li></ul>');
+          expect(parent.outerHTML).to.equal('<div><span></span><span></span></div>');
+        }
+        {
+          const { parent } = setupNodes();
+          const part = new NodePart({ parent });
+          const templateResult = html`<ul><li></li></ul>`;
+          part.render(templateResult);
+
+          const templateInstance = part.templateInstances.get(templateResult.template);
+          expect(fragmentString(templateInstance.fragment)).to.equal('');
+          expect(parent.outerHTML).to.equal('<div><ul><li></li></ul></div>');
+          part.clear();
+          expect(fragmentString(templateInstance.fragment)).to.equal('<ul><li></li></ul>');
+          expect(parent.outerHTML).to.equal('<div></div>');
+        }
+      });
+    });
+
     describe('_renderText', () => {
       it(`renders strings`, () => {
+        {
+          const { node, parent } = setupNodes();
+          const part = new NodePart({ node });
+          part._renderText('one');
+          expect(parent.outerHTML).to.equal('<div><span></span>one<span></span></div>');
+          part._renderText('two');
+          expect(parent.outerHTML).to.equal('<div><span></span>two<span></span></div>');
+        }
+        {
+          const { parent } = setupNodes();
+          const part = new NodePart({ parent });
+          part._renderText('one');
+          expect(parent.outerHTML).to.equal('<div>one</div>');
+          part._renderText('two');
+          expect(parent.outerHTML).to.equal('<div>two</div>');
+        }
+      });
+
+      it(`renders numbers as strings`, () => {
+        {
+          const { node, parent } = setupNodes();
+          const part = new NodePart({ node });
+          part._renderText(1);
+          expect(parent.outerHTML).to.equal('<div><span></span>1<span></span></div>');
+          part._renderText(2);
+          expect(parent.outerHTML).to.equal('<div><span></span>2<span></span></div>');
+        }
+        {
+          const { parent } = setupNodes();
+          const part = new NodePart({ parent });
+          part._renderText(1);
+          expect(parent.outerHTML).to.equal('<div>1</div>');
+          part._renderText(2);
+          expect(parent.outerHTML).to.equal('<div>2</div>');
+        }
+      });
+
+      it(`renders booleans as strings in the node`, () => {
+        {
+          const { node, parent } = setupNodes();
+          const part = new NodePart({ node });
+          part._renderText(true);
+          expect(parent.outerHTML).to.equal('<div><span></span>true<span></span></div>');
+          part._renderText(false);
+          expect(parent.outerHTML).to.equal('<div><span></span>false<span></span></div>');
+        }
+        {
+          const { parent } = setupNodes();
+          const part = new NodePart({ parent });
+          part._renderText(true);
+          expect(parent.outerHTML).to.equal('<div>true</div>');
+          part._renderText(false);
+          expect(parent.outerHTML).to.equal('<div>false</div>');
+        }
+      });
+
+      it(`renders different types in succession`, () => {
         const { node, parent } = setupNodes();
         const part = new NodePart({ node });
         part._renderText('string');
         expect(parent.outerHTML).to.equal('<div><span></span>string<span></span></div>');
-      });
-      it(`renders numbers as strings`, () => {
-        const { node, parent } = setupNodes();
-        const part = new NodePart({ node });
-        part._renderText(2);
-        expect(parent.outerHTML).to.equal('<div><span></span>2<span></span></div>');
-      });
-      it(`renders booleans as strings`, () => {
-        const { node, parent } = setupNodes();
-        const part = new NodePart({ node });
+        part._renderText(1);
+        expect(parent.outerHTML).to.equal('<div><span></span>1<span></span></div>');
         part._renderText(true);
         expect(parent.outerHTML).to.equal('<div><span></span>true<span></span></div>');
+      });
+    });
+
+    describe('_renderNode', () => {
+      it(`renders a node`, () => {
+        {
+          const { node, parent } = setupNodes();
+          const part = new NodePart({ node });
+          const nodeOne = document.createElement('div');
+          nodeOne.setAttribute('node', 1);
+          part._renderNode(nodeOne);
+          expect(parent.outerHTML).to.equal('<div><span></span><div node="1"></div><span></span></div>');
+          const nodeTwo = document.createElement('div');
+          nodeTwo.setAttribute('node', 2);
+          part._renderNode(nodeTwo);
+          expect(parent.outerHTML).to.equal('<div><span></span><div node="2"></div><span></span></div>');
+        }
+        {
+          const { parent } = setupNodes();
+          const part = new NodePart({ parent });
+          const nodeOne = document.createElement('div');
+          nodeOne.setAttribute('node', 1);
+          part._renderNode(nodeOne);
+          expect(parent.outerHTML).to.equal('<div><div node="1"></div></div>');
+          const nodeTwo = document.createElement('div');
+          nodeTwo.setAttribute('node', 2);
+          part._renderNode(nodeTwo);
+          expect(parent.outerHTML).to.equal('<div><div node="2"></div></div>');
+        }
+      });
+    });
+
+    describe('_renderIterable', () => {
+      it(`renders an array of primitives`, () => {
+        {
+          const { node, parent } = setupNodes();
+          const part = new NodePart({ node });
+          const array = ['hello', 1, true];
+          part._renderIterable(array);
+          expect(parent.outerHTML).to.equal('<div><span></span>hello1true<span></span></div>');
+        }
+        {
+          const { parent } = setupNodes();
+          const part = new NodePart({ parent });
+          const array = ['hello', 1, true];
+          part._renderIterable(array);
+          expect(parent.outerHTML).to.equal('<div>hello1true</div>');
+        }
+      });
+
+      it(`renders an array of different value types`, () => {
+        {
+          const { node, parent } = setupNodes();
+          const part = new NodePart({ node });
+          const array = ['hello', html`<div></div>`, document.createElement('i')];
+          part._renderIterable(array);
+          expect(parent.outerHTML).to.equal('<div><span></span>hello<div></div><i></i><span></span></div>');
+        }
+        {
+          const { parent } = setupNodes();
+          const part = new NodePart({ parent });
+          const array = ['hello', html`<div></div>`, document.createElement('i')];
+          part._renderIterable(array);
+          expect(parent.outerHTML).to.equal('<div>hello<div></div><i></i></div>');
+        }
+      });
+
+      it(`renders additions to the array in subsequent renders`, () => {
+        {
+          const { node, parent } = setupNodes();
+          const part = new NodePart({ node });
+          const array = ['hello', 1];
+          part._renderIterable(array);
+          expect(parent.outerHTML).to.equal('<div><span></span>hello1<span></span></div>');
+          array.unshift(true);
+          part._renderIterable(array);
+          expect(parent.outerHTML).to.equal('<div><span></span>truehello1<span></span></div>');
+        }
+        {
+          const { parent } = setupNodes();
+          const part = new NodePart({ parent });
+          const array = ['hello', 1];
+          part._renderIterable(array);
+          expect(parent.outerHTML).to.equal('<div>hello1</div>');
+          array.unshift(true);
+          part._renderIterable(array);
+          expect(parent.outerHTML).to.equal('<div>truehello1</div>');
+        }
+      });
+
+      it(`removes elements when the array shrinks`, () => {
+        {
+          const { node, parent } = setupNodes();
+          const part = new NodePart({ node });
+          const array = ['hello', 1, true];
+          part._renderIterable(array);
+          expect(parent.outerHTML).to.equal('<div><span></span>hello1true<span></span></div>');
+          array.pop();
+          part._renderIterable(array);
+          expect(parent.outerHTML).to.equal('<div><span></span>hello1<span></span></div>');
+        }
+        {
+          const { parent } = setupNodes();
+          const part = new NodePart({ parent });
+          const array = ['hello', 1, true];
+          part._renderIterable(array);
+          expect(parent.outerHTML).to.equal('<div>hello1true</div>');
+          array.pop();
+          part._renderIterable(array);
+          expect(parent.outerHTML).to.equal('<div>hello1</div>');
+        }
+      });
+
+      it(`does not break when rendering another thing in between arrays`, () => {
+        {
+          const { node, parent } = setupNodes();
+          const part = new NodePart({ node });
+          const array = ['hello', 1, true];
+          part._renderIterable(array);
+          expect(parent.outerHTML).to.equal('<div><span></span>hello1true<span></span></div>');
+          part._renderText('string');
+          expect(parent.outerHTML).to.equal('<div><span></span>string<span></span></div>');
+          part._renderIterable([1, 2, 3, 4, 5]);
+          expect(parent.outerHTML).to.equal('<div><span></span>12345<span></span></div>');
+        }
+        {
+          const { parent } = setupNodes();
+          const part = new NodePart({ parent });
+          const array = ['hello', 1, true];
+          part._renderIterable(array);
+          expect(parent.outerHTML).to.equal('<div>hello1true</div>');
+          part._renderText('string');
+          expect(parent.outerHTML).to.equal('<div>string</div>');
+          part._renderIterable([1, 2]);
+          expect(parent.outerHTML).to.equal('<div>12</div>');
+        }
+      });
+    });
+
+    describe('_renderPromise', () => {
+      it(`does nothing until the promise resolves`, () => {
+        {
+          const { node, parent } = setupNodes();
+          const part = new NodePart({ node });
+          const promise = new Promise(() => {});
+          part._renderPromise(promise);
+          expect(parent.outerHTML).to.equal('<div><span></span><span></span></div>');
+        }
+        {
+          const { parent } = setupNodes();
+          const part = new NodePart({ parent });
+          const promise = new Promise(() => {});
+          part._renderPromise(promise);
+          expect(parent.outerHTML).to.equal('<div></div>');
+        }
+      });
+
+      it(`renders a promise that is already resolved`, async () => {
+        {
+          const { node, parent } = setupNodes();
+          const part = new NodePart({ node });
+          const promise = Promise.resolve('string');
+          part._renderPromise(promise);
+          await promise;
+          expect(parent.outerHTML).to.equal('<div><span></span>string<span></span></div>');
+        }
+        {
+          const { parent } = setupNodes();
+          const part = new NodePart({ parent });
+          const promise = Promise.resolve('string');
+          part._renderPromise(promise);
+          await promise;
+          expect(parent.outerHTML).to.equal('<div>string</div>');
+        }
+      });
+
+      it(`renders the promise result once it resolves`, async () => {
+        {
+          const { node, parent } = setupNodes();
+          const part = new NodePart({ node });
+          const promise = new Promise(function(resolve) {
+            setTimeout(() => resolve('string'), 10);
+          });
+          part._renderPromise(promise);
+          expect(parent.outerHTML).to.equal('<div><span></span><span></span></div>');
+          await promise;
+          expect(parent.outerHTML).to.equal('<div><span></span>string<span></span></div>');
+        }
+        {
+          const { parent } = setupNodes();
+          const part = new NodePart({ parent });
+          const promise = new Promise(function(resolve) {
+            setTimeout(() => resolve('string'), 10);
+          });
+          part._renderPromise(promise);
+          expect(parent.outerHTML).to.equal('<div></div>');
+          await promise;
+          expect(parent.outerHTML).to.equal('<div>string</div>');
+        }
+      });
+
+      it(`only renders the last promise`, async () => {
+        {
+          const { node, parent } = setupNodes();
+          const part = new NodePart({ node });
+          const firstPromise = new Promise(function(resolve) {
+            setTimeout(() => resolve('bad'), 10);
+          });
+          const secondPromise = new Promise(function(resolve) {
+            setTimeout(() => resolve('good'), 20);
+          });
+          part._renderPromise(firstPromise);
+          part._renderPromise(secondPromise);
+          expect(parent.outerHTML).to.equal('<div><span></span><span></span></div>');
+          await firstPromise;
+          expect(parent.outerHTML).to.equal('<div><span></span><span></span></div>');
+          await secondPromise;
+          expect(parent.outerHTML).to.equal('<div><span></span>good<span></span></div>');
+        }
+        {
+          const { parent } = setupNodes();
+          const part = new NodePart({ parent });
+          const firstPromise = new Promise(function(resolve) {
+            setTimeout(() => resolve('bad'), 10);
+          });
+          const secondPromise = new Promise(function(resolve) {
+            setTimeout(() => resolve('good'), 20);
+          });
+          part._renderPromise(firstPromise);
+          part._renderPromise(secondPromise);
+          expect(parent.outerHTML).to.equal('<div></div>');
+          await firstPromise;
+          expect(parent.outerHTML).to.equal('<div></div>');
+          await secondPromise;
+          expect(parent.outerHTML).to.equal('<div>good</div>');
+        }
+      });
+
+      it(`does not override values rendered after the promise`, async () => {
+        {
+          const { node, parent } = setupNodes();
+          const part = new NodePart({ node });
+          const firstPromise = new Promise(function(resolve) {
+            setTimeout(() => resolve('bad'), 10);
+          });
+          part._renderPromise(firstPromise);
+          part._renderText('good');
+          expect(parent.outerHTML).to.equal('<div><span></span>good<span></span></div>');
+          await firstPromise;
+          expect(parent.outerHTML).to.equal('<div><span></span>good<span></span></div>');
+        }
+        {
+          const { parent } = setupNodes();
+          const part = new NodePart({ parent });
+          const firstPromise = new Promise(function(resolve) {
+            setTimeout(() => resolve('bad'), 10);
+          });
+          part._renderPromise(firstPromise);
+          part._renderText('good');
+          expect(parent.outerHTML).to.equal('<div>good</div>');
+          await firstPromise;
+          expect(parent.outerHTML).to.equal('<div>good</div>');
+        }
+      });
+
+      it(`works when rendering another thing in between promises`, async () => {
+        {
+          const { node, parent } = setupNodes();
+          const part = new NodePart({ node });
+          const firstPromise = new Promise(function(resolve) {
+            setTimeout(() => resolve('bad'), 10);
+          });
+          const secondPromise = new Promise(function(resolve) {
+            setTimeout(() => resolve('good'), 20);
+          });
+          part._renderPromise(firstPromise);
+          part._renderText('notgood');
+          part._renderPromise(secondPromise);
+          expect(parent.outerHTML).to.equal('<div><span></span><span></span></div>');
+          await firstPromise;
+          expect(parent.outerHTML).to.equal('<div><span></span><span></span></div>');
+          await secondPromise;
+          expect(parent.outerHTML).to.equal('<div><span></span>good<span></span></div>');
+        }
+        {
+          const { parent } = setupNodes();
+          const part = new NodePart({ parent });
+          const firstPromise = new Promise(function(resolve) {
+            setTimeout(() => resolve('bad'), 10);
+          });
+          const secondPromise = new Promise(function(resolve) {
+            setTimeout(() => resolve('good'), 20);
+          });
+          part._renderPromise(firstPromise);
+          part._renderText('notgood');
+          part._renderPromise(secondPromise);
+          expect(parent.outerHTML).to.equal('<div></div>');
+          await firstPromise;
+          expect(parent.outerHTML).to.equal('<div></div>');
+          await secondPromise;
+          expect(parent.outerHTML).to.equal('<div>good</div>');
+        }
       });
     });
 

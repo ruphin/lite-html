@@ -35,10 +35,9 @@ export class NodePart {
   // If a node is defined, this NodePart represents the position of that node in the tree
   // If a only a parent is defined, this NodePart represents the entire content of the parent
   constructor({ node, parent }) {
-    this.iterableFragment = document.createDocumentFragment();
     this.iterableParts = [];
     this.node = node;
-    this.previousValue = {}; // PreviousValue is an object so any value will effectively be different
+    this.value = {}; // initial value is an object so any new value will effectively be different
 
     this.parentNode = node && !(node.parentNode instanceof DocumentFragment) ? node.parentNode : parent;
     this.beforeNode = node && node.previousSibling;
@@ -65,10 +64,10 @@ export class NodePart {
       this._renderPromise(value);
     } else {
       this._renderText(String(value));
-      this.previousValue = String(value);
+      this.value = String(value);
     }
     // TODO: something smart
-    this.previousValue = value;
+    this.value = value;
   }
 
   /**
@@ -78,7 +77,7 @@ export class NodePart {
    */
   _renderText(text) {
     // If the previous value is equal to the primitive, do nothing
-    if (this.previousValue === text) {
+    if (this.value === text) {
       return;
     }
     // If the node is a TextNode, replace the content of that node
@@ -118,7 +117,10 @@ export class NodePart {
    * Render each iterable value in a part
    */
   _renderIterable(iterable) {
-    if (this.previousNode !== this.iterableFragment) {
+    if (!this.iterableFragment) {
+      this.iterableFragment = document.createDocumentFragment();
+    }
+    if (this.node !== this.iterableFragment) {
       this.clear();
     }
 
@@ -139,7 +141,7 @@ export class NodePart {
         part.render(iterable[index]);
       }
     });
-    this.previousNode = this.iterableFragment;
+    this.node = this.iterableFragment;
   }
 
   /**
@@ -161,15 +163,16 @@ export class NodePart {
   _renderPromise(promise) {
     // If we rendered this Promise already, do nothing
     // TODO: Account for rendering promise -> other -> promise
-    if (this.previousValue === promise || this.previousPromise === promise) {
+    if (this.value === promise || this.promise === promise) {
       return;
     }
     this.clear();
-    this.previousPromise = promise;
+    this.promise = promise;
+    this.value = promise;
     // When the promise resolves, render the value of that promise
     promise.then(value => {
       // If the part rendered another value in the meantime, abandon the promise
-      if (this.previousValue !== value) {
+      if (this.value !== promise) {
         return;
       }
       this.render(value);
@@ -200,7 +203,7 @@ export class NodePart {
       }
     }
     this.node = undefined;
-    this.previousValue = undefined;
+    this.value = undefined;
   }
 }
 
