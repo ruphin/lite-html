@@ -25,8 +25,10 @@
 
 import { TemplateResult, TemplateInstance } from './templates.js';
 
-const isPrimitive = value => !(typeof value === 'object' || typeof value === 'function');
-const isArray = value => Array.isArray(value) || value[Symbol.iterator];
+export const isPrimitive = value => value == null || !(typeof value === 'object' || typeof value === 'function');
+export const isArray = nonPrimitive => Array.isArray(nonPrimitive) || nonPrimitive[Symbol.iterator];
+
+export const noChange = {};
 
 export class NodePart {
   // node OR parent _must_ be defined
@@ -46,6 +48,9 @@ export class NodePart {
   }
 
   render(value) {
+    if (value === noChange) {
+      return;
+    }
     if (isPrimitive(value)) {
       this._renderPrimitive(value);
     } else if (value instanceof TemplateResult) {

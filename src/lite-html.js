@@ -26,6 +26,8 @@
 import { TemplateResult } from './lib/templates.js';
 import { NodePart } from './lib/parts.js';
 
+export { noChange } from './lib/parts.js';
+
 /**
  * Tagging function to tag JavaScript template string literals as HTML
  *
