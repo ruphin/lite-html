@@ -123,6 +123,7 @@ export class NodePart {
     if (this.node !== this.iterableFragment) {
       this.clear();
       this.parentNode.insertBefore(this.iterableFragment, this.afterNode);
+      this.node = this.iterableFragment;
     }
 
     while (this.iterableParts.length < iterable.length) {
@@ -134,13 +135,8 @@ export class NodePart {
     }
 
     this.iterableParts.forEach((part, index) => {
-      if (iterable[index] === undefined) {
-        part.clear();
-      } else {
-        part.render(iterable[index]);
-      }
+      part.render(iterable[index]);
     });
-    this.node = this.iterableFragment;
   }
 
   /**
