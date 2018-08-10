@@ -25,6 +25,7 @@
 
 import { findParts } from './node-walker.js';
 import { buildTemplate } from './template-parser.js';
+import { NodePart } from './parts.js';
 /**
  * A map that contains all the template literals we have seen before
  * It maps from a String array to a Template object
@@ -97,7 +98,7 @@ export class TemplateResult {
  *   The parts that render into this template instance
  */
 export class TemplateInstance {
-  constructor(template, parent) {
+  constructor(template, parent, before, after) {
     this.template = template;
     this.fragment = template.element.content.cloneNode(true);
 
@@ -108,7 +109,15 @@ export class TemplateInstance {
         node = node.childNodes[nodeIndex];
       });
       part.node = node;
-      part.parent = parent;
+      if (part.type === NodePart) {
+        if (part.path.length === 1) {
+          part.parent = parent;
+          part.before = node.previousSibling || before;
+          part.after = node.nextSibling || after;
+        } else {
+          part.parent = node.parentNode;
+        }
+      }
       return part;
     });
     this.parts = parts.map(part => new part.type(part));

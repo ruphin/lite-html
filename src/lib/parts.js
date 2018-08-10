@@ -34,14 +34,14 @@ export class NodePart {
   // node OR parent _must_ be defined
   // If a node is defined, this NodePart represents the position of that node in the tree
   // If a only a parent is defined, this NodePart represents the entire content of the parent
-  constructor({ node, parent }) {
+  constructor({ node, parent, before, after }) {
     this.iterableParts = [];
     this.node = node;
     this.value = {}; // initial value is an object so any new value will effectively be different
 
-    this.parentNode = node && !(node.parentNode instanceof DocumentFragment) ? node.parentNode : parent;
-    this.beforeNode = node && node.previousSibling;
-    this.afterNode = node && node.nextSibling;
+    this.parentNode = parent || (node && node.parentNode);
+    this.beforeNode = before || (node && node.previousSibling);
+    this.afterNode = after || (node && node.nextSibling);
 
     this.templateInstances = new Map();
   }
@@ -99,7 +99,7 @@ export class NodePart {
   _renderTemplateResult(templateResult) {
     let instance = this.templateInstances.get(templateResult.template);
     if (!instance) {
-      instance = new TemplateInstance(templateResult.template, this.parentNode);
+      instance = new TemplateInstance(templateResult.template, this.parentNode, this.beforeNode, this.afterNode);
       this.templateInstances.set(templateResult.template, instance);
     }
     if (instance.fragment !== this.node) {
