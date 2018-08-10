@@ -34,6 +34,10 @@ const htmlLite = ({ dest, format, uglified = false, transpiled = false }) => {
   return {
     input: 'src/lite-html.js',
     output: { banner: license, file: dest, name: 'lite-html', format, sourcemap: true },
+    onwarn(warning, warn) {
+      if (warning.code === 'CIRCULAR_DEPENDENCY') return;
+      warn(warning);
+    },
     plugins: [
       transpiled &&
         commonjs({
@@ -67,6 +71,10 @@ const index = file => {
   return {
     input: `${file}.js`,
     output: { banner: license, file: `${file}.es5.js`, format: 'iife', name: file.split('/').slice(-1)[0] },
+    onwarn(warning, warn) {
+      if (warning.code === 'THIS_IS_UNDEFINED' || warning.code === 'CIRCULAR_DEPENDENCY') return;
+      warn(warning);
+    },
     plugins: [
       commonjs({
         include: 'node_modules/**'
