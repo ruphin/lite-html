@@ -165,15 +165,13 @@ describe('nodeWalker', () => {
 
     it(`does not break on the 'style' attribute`, () => {
       {
-        const strings = html`
-          <div style=${''}></div>`;
+        const strings = html`<div style=${''}></div>`;
         const template = buildTemplate(strings);
         const parts = findParts(strings, template);
         expect(parts[0].attribute).to.equal('style');
       }
       {
-        const strings = html`
-          <div a=${0} style=${''} b=${1}></div>`;
+        const strings = html`<div a=${0} style=${''} b=${1}></div>`;
         const template = buildTemplate(strings);
         const parts = findParts(strings, template);
         expect(parts[0].attribute).to.equal('a');
@@ -181,22 +179,29 @@ describe('nodeWalker', () => {
         expect(parts[2].attribute).to.equal('b');
       }
       {
-        const strings = html`
-          <div a=${0} style='' b=${1}></div>`;
+        const strings = html`<div a=${0} style='' b=${1}></div>`;
         const template = buildTemplate(strings);
         const parts = findParts(strings, template);
         expect(parts[0].attribute).to.equal('a');
         expect(parts[1].attribute).to.equal('b');
       }
       {
-        const strings = html`
-          <div a='' a=${0} style=''></div>`;
+        const strings = html`<div a='' a=${0} style=''></div>`;
         const template = buildTemplate(strings);
         expect(() => findParts(strings, template)).to.throw();
       }
       {
-        const strings = html`
-          <div a='' a=${0} style=${''}></div>`;
+        const strings = html`<div a='' a=${0} style=''>style=${0}</div>`;
+        const template = buildTemplate(strings);
+        expect(() => findParts(strings, template)).to.throw();
+      }
+      {
+        const strings = html`<div a='' a=${0} style=${''}></div>`;
+        const template = buildTemplate(strings);
+        expect(() => findParts(strings, template)).to.throw();
+      }
+      {
+        const strings = html`<div a='' a=${0} style=${''}>style=${0}</div>`;
         const template = buildTemplate(strings);
         expect(() => findParts(strings, template)).to.throw();
       }

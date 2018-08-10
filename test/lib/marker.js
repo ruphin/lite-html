@@ -23,16 +23,14 @@
  * SOFTWARE.
  */
 
-import { marker, attributeMarker, commentMarker, nodeMarker } from '../../src/lib/markers.js';
+import { marker, attributeMarker, commentMarker, nodeMarker, failMarker, IEStyleMarker } from '../../src/lib/markers.js';
 
 const expect = chai.expect;
 
 describe('markers', () => {
-  const alphaNumericalRegex = /^[a-z0-9]+$/;
-  const alphaNumericalAndDashRegex = /^[a-z0-9\-]+$/;
-
   describe('marker', () => {
     it('should contain only lowercase alphanumerical characters', () => {
+      const alphaNumericalRegex = /^[a-z0-9]+$/;
       expect(marker.match(alphaNumericalRegex)).to.not.be.null;
     });
     it('should be at least 10 characters long', () => {
@@ -41,6 +39,15 @@ describe('markers', () => {
   });
 
   describe('nodeMarker', () => {
+    it(`should contain the random marker`, () => {
+      expect(nodeMarker.indexOf(marker)).to.be.above(0);
+    });
+    it(`should contain the failMarker after a double quote, wrapped in spaces`, () => {
+      expect(nodeMarker.indexOf(`" ${failMarker} `)).to.be.above(0);
+    });
+  });
+
+  describe('failMarker', () => {
     it(`should contain the random marker`, () => {
       expect(nodeMarker.indexOf(marker)).to.be.above(0);
     });
@@ -53,8 +60,18 @@ describe('markers', () => {
   });
 
   describe('attributeMarker', () => {
-    it(`should only contain lowercase alphanumerical characters and '-'`, () => {
-      expect(attributeMarker.match(alphaNumericalAndDashRegex)).to.not.be.null;
+    it(`should be a CSS font-family definition`, () => {
+      expect(attributeMarker.startsWith('font-family:')).to.be.true;
+    });
+    it(`should contain the random marker`, () => {
+      expect(attributeMarker.indexOf(marker)).to.be.above(0);
+    });
+  });
+
+  describe('IEStyleMarker', () => {
+    it(`should be an IE11 font-family definition`, () => {
+      const IEStyleRegex = /^font-family: [a-z0-9]+;$/;
+      expect(IEStyleMarker.match(IEStyleRegex)).to.not.be.null;
     });
     it(`should contain the random marker`, () => {
       expect(attributeMarker.indexOf(marker)).to.be.above(0);

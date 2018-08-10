@@ -23,10 +23,11 @@
  * SOFTWARE.
  */
 
-import { attributeMarker, commentMarker, nodeMarker, failFlag } from './markers.js';
+import { IEStyleMarker, attributeMarker, commentMarker, nodeMarker, failMarker } from './markers.js';
 import { AttributePart, CommentPart, NodePart } from './parts.js';
 
 const lastAttributeNameRegex = /[ \x09\x0a\x0c\x0d]([^\0-\x1F\x7F-\x9F \x09\x0a\x0c\x0d"'>=/]+)[ \x09\x0a\x0c\x0d]*=$/;
+const filter = [].filter;
 
 export const findParts = (strings, template) => {
   let parts = [];
@@ -47,16 +48,17 @@ export const findParts = (strings, template) => {
 
     // Element Node
     if (node.nodeType === 1) {
-      if (node.hasAttribute(failFlag)) {
+      if (node.hasAttribute(failMarker)) {
         throw new Error("The '>' character is not allowed in attribute literals. Replace with '&gt;'");
       }
       // All nodes with attribute parts have the attributeMarker set as an attribute
       if (node.hasAttribute(attributeMarker)) {
         node.removeAttribute(attributeMarker);
 
-        const attributes = Array.from(node.attributes);
-        const dynamicAttributes = attributes.filter(attribute => attribute.value === attributeMarker).length;
-
+        let dynamicAttributes = filter.call(node.attributes, attribute => attribute.value === attributeMarker).length;
+        if (node.getAttribute('style') === IEStyleMarker) {
+          dynamicAttributes += 1;
+        }
         for (let i = 0; i < dynamicAttributes; i++) {
           const attributeMatch = lastAttributeNameRegex.exec(strings[parts.length]);
           const attribute = attributeMatch[1];

@@ -653,13 +653,5 @@ describe('parts', () => {
         }
       });
     });
-
-    // it(`test`, () => {
-    //   const { node, parent } = setupNodes();
-    //   let part = new NodePart({ parent });
-    //   expect(part.parentNode === parent).to.be.true;
-    //   part = new NodePart({ node });
-    //   expect(part.parentNode === parent).to.be.true;
-    // });
   });
 });

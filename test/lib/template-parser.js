@@ -35,7 +35,7 @@ import {
   parseTemplate,
   buildTemplate
 } from '../../src/lib/template-parser.js';
-import { attributeMarker, commentMarker, nodeMarker, failFlag } from '../../src/lib/markers.js';
+import { attributeMarker, commentMarker, nodeMarker, failMarker } from '../../src/lib/markers.js';
 
 const expect = chai.expect;
 const html = strings => strings;
@@ -224,9 +224,9 @@ describe('templateParser', () => {
       expect(buildTemplate(html`<!--<!--${0}-->`).content.childNodes.length).to.equal(3);
     });
 
-    it(`adds the failFlag attribute to nodes when an attribute contains the '>' character`, () => {
-      expect(buildTemplate(html`<div a=">" b=${0}></div>`).content.childNodes[0].hasAttribute(failFlag)).to.be.true;
-      expect(buildTemplate(html`<div a=">" b="${0}"></div>`).content.childNodes[0].hasAttribute(failFlag)).to.be.true;
+    it(`adds the failMarker attribute to nodes when an attribute contains the '>' character`, () => {
+      expect(buildTemplate(html`<div a=">" b=${0}></div>`).content.childNodes[0].hasAttribute(failMarker)).to.be.true;
+      expect(buildTemplate(html`<div a=">" b="${0}"></div>`).content.childNodes[0].hasAttribute(failMarker)).to.be.true;
     });
 
     it(`adds the attributeMarker attribute to nodes with a dynamic attribute`, () => {

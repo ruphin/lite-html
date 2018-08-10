@@ -18,12 +18,10 @@ const remove = e => {
   render(template(), container);
 };
 
-const colorStyle = 'color: red';
 const template = () => {
   return html`
       <!-- ${'todo-app'}> -->
       <input id="input"></input>
-      <p style=${colorStyle}>test</p>
       <button attribute=${'something'} @click=${add}>Add todo</button>
       ${todos.map(
         todo => html`
