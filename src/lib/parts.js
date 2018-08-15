@@ -29,6 +29,7 @@ export const isSerializable = value => typeof value === 'string' || typeof value
 export const isArray = nonPrimitive => Array.isArray(nonPrimitive) || nonPrimitive[Symbol.iterator];
 
 export const noChange = {};
+const ITERABLE = {};
 
 export class NodePart {
   // node OR parent _must_ be defined
@@ -117,13 +118,10 @@ export class NodePart {
    * Render each iterable value in a part
    */
   _renderIterable(iterable) {
-    if (!this.iterableFragment) {
-      this.iterableFragment = document.createDocumentFragment();
-    }
-    if (this.node !== this.iterableFragment) {
+    if (this.node !== ITERABLE) {
       this.clear();
-      this.parentNode.insertBefore(this.iterableFragment, this.afterNode);
-      this.node = this.iterableFragment;
+      this.node = ITERABLE;
+      this.iterableParts.length = 0;
     }
 
     while (this.iterableParts.length < iterable.length) {
@@ -133,6 +131,13 @@ export class NodePart {
       this.parentNode.insertBefore(node, delimiter);
       this.iterableParts.push(new NodePart({ node, parent: this.parentNode }));
     }
+
+    if (this.iterableParts.length > iterable.length) {
+      let nodeToRemove = this.iterableParts[iterable.length].beforeNode.nextSibling;
+      moveNodes(this.parentNode, nodeToRemove, this.afterNode);
+    }
+
+    this.iterableParts.length = iterable.length;
 
     this.iterableParts.forEach((part, index) => {
       part.render(iterable[index]);
@@ -183,24 +188,26 @@ export class NodePart {
    */
   clear() {
     let nodeToRemove = (this.beforeNode && this.beforeNode.nextSibling) || this.parentNode.childNodes[0];
-    let nextNode;
-    if (this.node instanceof DocumentFragment) {
-      while (nodeToRemove != this.afterNode) {
-        nextNode = nodeToRemove.nextSibling;
-        this.node.appendChild(nodeToRemove);
-        nodeToRemove = nextNode;
-      }
-    } else {
-      while (nodeToRemove != this.afterNode) {
-        nextNode = nodeToRemove.nextSibling;
-        this.parentNode.removeChild(nodeToRemove);
-        nodeToRemove = nextNode;
-      }
-    }
+    moveNodes(this.parentNode, nodeToRemove, this.afterNode, this.node);
     this.node = undefined;
     this.value = undefined;
   }
 }
+
+const moveNodes = (parent, begin, end, target) => {
+  let nextNode;
+  let remove;
+  if (target instanceof DocumentFragment) {
+    remove = () => target.appendChild(begin);
+  } else {
+    remove = () => parent.removeChild(begin);
+  }
+  while (begin != end) {
+    nextNode = begin.nextSibling;
+    remove();
+    begin = nextNode;
+  }
+};
 
 // The node in the CommentPart constructor must be a CommentNode
 export class CommentPart {
