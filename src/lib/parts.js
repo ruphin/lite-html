@@ -118,6 +118,11 @@ export class NodePart {
    * Render each iterable value in a part
    */
   _renderIterable(iterable) {
+    if (iterable.length === 0) {
+      this.clear();
+      return;
+    }
+
     if (this.node !== ITERABLE) {
       this.clear();
       this.node = ITERABLE;
@@ -248,15 +253,18 @@ export class AttributePart {
   }
 
   _renderEvent(listener) {
-    if (this._currentEventListener === listener) {
+    if (this.value === listener) {
       return;
     }
-    this.node.removeEventListener(this.name, this._currentEventListener);
+    this.node.removeEventListener(this.name, this.value);
     this.node.addEventListener(this.name, listener);
-    this._currentEventListener = listener;
+    this.value = listener;
   }
 
   _renderAttribute(string) {
-    this.node.setAttribute(this.name, string);
+    if (string !== this.value) {
+      this.node.setAttribute(this.name, string);
+      this.value = string;
+    }
   }
 }
