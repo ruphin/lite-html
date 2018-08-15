@@ -113,7 +113,7 @@ const template = classString => html`<div class=${`red ${classString}`}></div>`;
 
 #### Boolean attributes
 
-You can set boolean attributes by prefixing the attribute name with `?`.
+You can set boolean attributes by prefixing the attribute name with `?`
 
 ```javascript
 const template = secret => html`<p ?hidden=${secret}></p>`;
@@ -121,7 +121,7 @@ const template = secret => html`<p ?hidden=${secret}></p>`;
 
 #### Properties
 
-You can set properties on elements by prefixing an attribute name with `.`.
+You can set properties on elements by prefixing an attribute name with `.`
 
 ```javascript
 const template = user => html`<user-panel .user=${user}></user-panel>`;
@@ -129,7 +129,7 @@ const template = user => html`<user-panel .user=${user}></user-panel>`;
 
 #### Event handlers
 
-You can attach event handlers by prefixing an attribute name with `@`.
+You can attach event handlers by prefixing an attribute name with `@`
 
 ```javascript
 const handleclick = () => {
