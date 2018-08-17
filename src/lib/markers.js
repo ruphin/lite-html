@@ -25,7 +25,7 @@
 
 export const marker = Math.random()
   .toString(36)
-  .substring(2)
+  .slice(2)
   .padStart(10, '0');
 export const attributeMarker = `font-family:${marker}`;
 export const IEStyleMarker = `font-family: ${marker};`;
