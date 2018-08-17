@@ -34,9 +34,6 @@ export const findParts = (strings, template) => {
 
   // Recursive depth-first tree traversal that finds nodes in the subtree of `node` that are parts.
   const recursiveIndex = (node, path) => {
-    if (node === undefined) {
-      return;
-    }
     if (node.nodeType === 8) {
       if (node.nodeValue === commentMarker) {
         parts.push({ type: CommentPart, path });
