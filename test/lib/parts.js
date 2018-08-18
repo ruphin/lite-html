@@ -23,7 +23,7 @@
  * SOFTWARE.
  */
 
-import { isSerializable, isArray, AttributePart, CommentPart, NodePart } from '../../src/lib/parts.js';
+import { isSerializable, isIterable, AttributePart, CommentPart, NodePart } from '../../src/lib/parts.js';
 import { TemplateResult } from '../../src/lib/templates.js';
 
 const html = (strings, ...values) => new TemplateResult(strings, values);
@@ -51,20 +51,20 @@ describe('parts', () => {
     });
   });
 
-  describe('isArray', () => {
+  describe('isIterable', () => {
     it('should return a truthy value for array-like non-primitives', () => {
-      expect(!!isArray([])).to.be.true;
-      expect(!!isArray(new Map())).to.be.true;
-      expect(!!isArray(new Set())).to.be.true;
-      expect(!!isArray(new Int8Array(0))).to.be.true;
+      expect(!!isIterable([])).to.be.true;
+      expect(!!isIterable(new Map())).to.be.true;
+      expect(!!isIterable(new Set())).to.be.true;
+      expect(!!isIterable(new Int8Array(0))).to.be.true;
     });
 
     it('should return a falsy value for non-array-like non-primitives', () => {
-      expect(!!isArray({})).to.be.false;
-      expect(!!isArray(html``)).to.be.false;
-      expect(!!isArray(function() {})).to.be.false;
-      expect(!!isArray(() => {})).to.be.false;
-      expect(!!isArray(Symbol())).to.be.false;
+      expect(!!isIterable({})).to.be.false;
+      expect(!!isIterable(html``)).to.be.false;
+      expect(!!isIterable(function() {})).to.be.false;
+      expect(!!isIterable(() => {})).to.be.false;
+      expect(!!isIterable(Symbol())).to.be.false;
     });
   });
 
@@ -464,6 +464,39 @@ describe('parts', () => {
         }
       });
 
+      it(`correctly renders empty arrays`, () => {
+        {
+          const { node, parent } = setupNodes();
+          const part = new NodePart({ node });
+          let array = [1, 2, 3];
+          part._renderIterable(array.map(i => html`<p>${i}</p>`));
+          expect(parent.outerHTML).to.equal('<div><span></span><p>1</p><p>2</p><p>3</p><span></span></div>');
+
+          array = [];
+          part._renderIterable(array.map(i => html`<p>${i}</p>`));
+          expect(parent.outerHTML).to.equal('<div><span></span><span></span></div>');
+
+          array = [4, 5, 6];
+          part._renderIterable(array.map(i => html`<p>${i}</p>`));
+          expect(parent.outerHTML).to.equal('<div><span></span><p>4</p><p>5</p><p>6</p><span></span></div>');
+        }
+        {
+          const { parent } = setupNodes();
+          const part = new NodePart({ parent });
+          let array = [1, 2, 3];
+          part._renderIterable(array.map(i => html`<p>${i}</p>`));
+          expect(parent.outerHTML).to.equal('<div><p>1</p><p>2</p><p>3</p></div>');
+
+          array = [];
+          part._renderIterable(array.map(i => html`<p>${i}</p>`));
+          expect(parent.outerHTML).to.equal('<div></div>');
+
+          array = [4, 5, 6];
+          part._renderIterable(array.map(i => html`<p>${i}</p>`));
+          expect(parent.outerHTML).to.equal('<div><p>4</p><p>5</p><p>6</p></div>');
+        }
+      });
+
       it(`renders additions to the array in subsequent renders`, () => {
         {
           const { node, parent } = setupNodes();
@@ -643,7 +676,7 @@ describe('parts', () => {
             setTimeout(() => resolve('bad'), 10);
           });
           part._renderPromise(firstPromise);
-          part._renderText('good');
+          part.render('good');
           expect(parent.outerHTML).to.equal('<div><span></span>good<span></span></div>');
           await firstPromise;
           expect(parent.outerHTML).to.equal('<div><span></span>good<span></span></div>');
@@ -655,7 +688,7 @@ describe('parts', () => {
             setTimeout(() => resolve('bad'), 10);
           });
           part._renderPromise(firstPromise);
-          part._renderText('good');
+          part.render('good');
           expect(parent.outerHTML).to.equal('<div>good</div>');
           await firstPromise;
           expect(parent.outerHTML).to.equal('<div>good</div>');
@@ -673,7 +706,7 @@ describe('parts', () => {
             setTimeout(() => resolve('good'), 20);
           });
           part._renderPromise(firstPromise);
-          part._renderText('notgood');
+          part.render('notgood');
           part._renderPromise(secondPromise);
           expect(parent.outerHTML).to.equal('<div><span></span><span></span></div>');
           await firstPromise;
@@ -691,7 +724,7 @@ describe('parts', () => {
             setTimeout(() => resolve('good'), 20);
           });
           part._renderPromise(firstPromise);
-          part._renderText('notgood');
+          part.render('notgood');
           part._renderPromise(secondPromise);
           expect(parent.outerHTML).to.equal('<div></div>');
           await firstPromise;

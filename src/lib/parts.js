@@ -26,25 +26,27 @@
 import { TemplateResult, TemplateInstance } from './templates.js';
 
 export const isSerializable = value => typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
-export const isArray = nonPrimitive => Array.isArray(nonPrimitive) || nonPrimitive[Symbol.iterator];
+export const isIterable = nonPrimitive => Array.isArray(nonPrimitive) || nonPrimitive[Symbol.iterator];
 
+// A flag that signals that no render should happen
 export const noChange = {};
-const ITERABLE = {};
+
+// A node type for empty parts
+const emptyNode = {};
+// A node type for parts that contain an iterable
+const iterableNode = {};
 
 export class NodePart {
   // node OR parent _must_ be defined
   // If a node is defined, this NodePart represents the position of that node in the tree
-  // If a only a parent is defined, this NodePart represents the entire content of the parent
+  // If a only a parent is defined, this NodePart represents the content of the parent
   constructor({ node, parent, before, after }) {
-    this.iterableParts = [];
-    this.node = node;
-    this.value = {}; // initial value is an object so any new value will effectively be different
+    this.node = node || emptyNode;
+    this.value = noChange;
 
     this.parentNode = parent || (node && node.parentNode);
     this.beforeNode = before || (node && node.previousSibling);
     this.afterNode = after || (node && node.nextSibling);
-
-    this.templateInstances = new Map();
   }
 
   render(value) {
@@ -57,36 +59,35 @@ export class NodePart {
       this._renderText(value);
     } else if (value instanceof TemplateResult) {
       this._renderTemplateResult(value);
-    } else if (isArray(value)) {
+    } else if (isIterable(value)) {
       this._renderIterable(value);
     } else if (value instanceof Node) {
       this._renderNode(value);
     } else if (value.then !== undefined) {
       this._renderPromise(value);
     } else {
-      this._renderText(String(value));
-      this.value = String(value);
+      value = String(value);
+      this._renderText(value);
     }
-    // TODO: something smart
     this.value = value;
   }
 
   /**
-   * Render a primitive value in this part
+   * Render a serializable value in this part
    *
-   * Primitive values are rendered as textContent of a TextNode
+   * Strings, Numbers, and Booleans are serializable
+   * Serializable values are rendered as textContent of a TextNode
    */
-  _renderText(text) {
-    // If the previous value is equal to the primitive, do nothing
-    if (this.value === text) {
-      return;
-    }
-    // If the node is a TextNode, replace the content of that node
-    // Otherwise, create a new TextNode with the primitive value as content
-    if (this.node && this.node.nodeType === 3) {
-      this.node.textContent = text;
-    } else {
-      this._renderNode(document.createTextNode(text));
+  _renderText(serializable) {
+    // If the text is not equal to the previously rendered value
+    if (this.value !== serializable) {
+      // If the node is a TextNode, replace the content of that node
+      // Otherwise, create a new TextNode with the primitive value as content
+      if (this.node.nodeType === 3) {
+        this.node.textContent = serializable;
+      } else {
+        this._renderNode(document.createTextNode(serializable));
+      }
     }
   }
 
@@ -94,16 +95,17 @@ export class NodePart {
    * Render a TemplateResult in this part
    *
    * Checks if this template has already been rendered in this part before.
-   * If so, it re-use that TemplateInstance
-   * If not, it create a new TemplateInstance
+   * If so, re-use that TemplateInstance
+   * If not, create a new TemplateInstance
    */
   _renderTemplateResult(templateResult) {
+    this.templateInstances = this.templateInstances || new Map();
     let instance = this.templateInstances.get(templateResult.template);
     if (!instance) {
       instance = new TemplateInstance(templateResult.template, this.parentNode, this.beforeNode, this.afterNode);
       this.templateInstances.set(templateResult.template, instance);
     }
-    if (instance.fragment !== this.node) {
+    if (this.node !== instance.fragment) {
       this.clear();
       this.parentNode.insertBefore(instance.fragment, this.afterNode);
       this.node = instance.fragment;
@@ -118,70 +120,86 @@ export class NodePart {
    * Render each iterable value in a part
    */
   _renderIterable(iterable) {
-    if (iterable.length === 0) {
+    if (this.node !== iterableNode) {
       this.clear();
-      return;
+      this.node = iterableNode;
+      if (!this.iterableParts) {
+        this.iterableParts = [];
+      } else {
+        this.iterableParts.length = 0;
+      }
     }
 
-    if (this.node !== ITERABLE) {
-      this.clear();
-      this.node = ITERABLE;
-      this.iterableParts.length = 0;
+    // if (this.iterableParts.length < iterable.length) {
+    //   let after;
+    //   let before = this.afterNode ? this.afterNode.previousSibling : this.parentNode.lastChild;
+    //   const parent = this.parentNode;
+    //   do {
+    //     after = document.createTextNode('');
+    //     this.parentNode.insertBefore(after, this.afterNode);
+    //     this.iterableParts.push(new NodePart({ before, after, parent }));
+    //     before = after;
+    //   } while (this.iterableParts.length < iterable.length);
+    // } else if (this.iterableParts.length > iterable.length) {
+    //   const nodeToRemove = this.iterableParts[iterable.length].beforeNode.nextSibling;
+    //   moveNodes(this.parentNode, nodeToRemove, this.afterNode);
+    //   this.iterableParts.length = iterable.length;
+    // }
+
+    let index = 0;
+    let before = this.afterNode ? this.afterNode.previousSibling : this.parentNode.lastChild;
+    let after;
+    const parent = this.parentNode;
+    for (const value of iterable) {
+      let part = this.iterableParts[index];
+      if (part === undefined) {
+        after = document.createTextNode('');
+        this.parentNode.insertBefore(after, this.afterNode);
+        part = new NodePart({ before, after, parent });
+        this.iterableParts.push(part);
+        before = after;
+      }
+      part.render(value);
+      index++;
     }
-
-    while (this.iterableParts.length < iterable.length) {
-      const node = document.createComment('');
-      const delimiter = document.createTextNode('');
-      this.parentNode.insertBefore(delimiter, this.afterNode);
-      this.parentNode.insertBefore(node, delimiter);
-      this.iterableParts.push(new NodePart({ node, parent: this.parentNode }));
+    if (index === 0) {
+      moveNodes(this.parentNode, this.beforeNode, this.afterNode);
+    } else if (index < this.iterableParts.length) {
+      const lastPart = this.iterableParts[index - 1];
+      moveNodes(this.parentNode, lastPart.afterNode, this.afterNode);
     }
-
-    if (this.iterableParts.length > iterable.length) {
-      let nodeToRemove = this.iterableParts[iterable.length].beforeNode.nextSibling;
-      moveNodes(this.parentNode, nodeToRemove, this.afterNode);
-    }
-
-    this.iterableParts.length = iterable.length;
-
-    this.iterableParts.forEach((part, index) => {
-      part.render(iterable[index]);
-    });
+    this.iterableParts.length = index;
   }
 
   /**
    * Render a DOM node in this part
    */
   _renderNode(node) {
-    // If node is already the current content node, do nothing
-    if (this.node === node) {
-      return;
+    // If we are not already rendering this node
+    if (this.node !== node) {
+      this.clear();
+      this.parentNode.insertBefore(node, this.afterNode);
+      this.node = node;
     }
-    this.clear();
-    this.parentNode.insertBefore(node, this.afterNode);
-    this.node = node;
   }
 
   /**
    * Render the result of a promise in this part
    */
   _renderPromise(promise) {
-    // If we rendered this Promise already, do nothing
-    // TODO: Account for rendering promise -> other -> promise
-    if (this.value === promise || this.promise === promise) {
-      return;
+    // If the promise is not the last value or promise
+    if (this.value !== promise && this.promise !== promise) {
+      this.clear();
+      this.promise = promise;
+      this.value = promise;
+      // When the promise resolves, render the result of that promise
+      promise.then(value => {
+        // Render the promise result only if the last rendered value was the promise
+        if (this.value === promise) {
+          this.render(value);
+        }
+      });
     }
-    this.clear();
-    this.promise = promise;
-    this.value = promise;
-    // When the promise resolves, render the value of that promise
-    promise.then(value => {
-      // If the part rendered another value in the meantime, abandon the promise
-      if (this.value !== promise) {
-        return;
-      }
-      this.render(value);
-    });
   }
 
   /**
@@ -192,25 +210,33 @@ export class NodePart {
    * Otherwise, the current content is removed from the DOM permanently
    */
   clear() {
-    let nodeToRemove = (this.beforeNode && this.beforeNode.nextSibling) || this.parentNode.childNodes[0];
-    moveNodes(this.parentNode, nodeToRemove, this.afterNode, this.node);
-    this.node = undefined;
-    this.value = undefined;
+    moveNodes(this.parentNode, this.beforeNode, this.afterNode, this.node);
+    this.node = emptyNode;
   }
 }
 
-const moveNodes = (parent, begin, end, target) => {
-  let nextNode;
-  let remove;
-  if (target instanceof DocumentFragment) {
-    remove = () => target.appendChild(begin);
+const moveNodes = (parent, before, after, target) => {
+  let nodeToRemove;
+  if (before == undefined) {
+    nodeToRemove = parent.firstChild;
   } else {
-    remove = () => parent.removeChild(begin);
+    nodeToRemove = before && before.nextSibling;
   }
-  while (begin != end) {
-    nextNode = begin.nextSibling;
-    remove();
-    begin = nextNode;
+  if (nodeToRemove !== null) {
+    nodeToRemove = nodeToRemove || parent.firstChild;
+    let remove;
+    let nextNode;
+    if (target instanceof DocumentFragment) {
+      remove = () => target.appendChild(nodeToRemove);
+    } else {
+      remove = () => parent.removeChild(nodeToRemove);
+    }
+
+    while (nodeToRemove != after) {
+      nextNode = nodeToRemove.nextSibling;
+      remove();
+      nodeToRemove = nextNode;
+    }
   }
 };
 
@@ -249,16 +275,18 @@ export class AttributePart {
   }
 
   _renderBoolean(boolean) {
-    boolean ? this.node.setAttribute(this.name, '') : this.node.removeAttribute(this.name);
+    if (this.value !== !!boolean) {
+      boolean ? this.node.setAttribute(this.name, '') : this.node.removeAttribute(this.name);
+      this.value = boolean;
+    }
   }
 
   _renderEvent(listener) {
-    if (this.value === listener) {
-      return;
+    if (this.value !== listener) {
+      this.node.removeEventListener(this.name, this.value);
+      this.node.addEventListener(this.name, listener);
+      this.value = listener;
     }
-    this.node.removeEventListener(this.name, this.value);
-    this.node.addEventListener(this.name, listener);
-    this.value = listener;
   }
 
   _renderAttribute(string) {
