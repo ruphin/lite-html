@@ -32,45 +32,61 @@ const filter = [].filter;
 export const findParts = (strings, template) => {
   let parts = [];
 
-  // Recursive depth-first tree traversal that finds nodes in the subtree of `node` that are parts.
-  const recursiveIndex = (node, path) => {
+  // Recursive depth-first tree traversal that finds nodes in the subtree of `node` that are parts
+  // The path is an array of incides of childNodes to get to this node
+  const recursiveSearch = (node, path) => {
+    // If the node is a CommentNode, check if it is a marker for a CommentPart or NodePart
     if (node.nodeType === 8) {
       if (node.nodeValue === commentMarker) {
         parts.push({ type: CommentPart, path });
       } else if (node.nodeValue === nodeMarker) {
         parts.push({ type: NodePart, path });
       }
-      return;
-    }
-
-    // Element Node
-    if (node.nodeType === 1) {
-      if (node.hasAttribute(failMarker)) {
-        throw new Error("The '>' character is not allowed in attribute literals. Replace with '&gt;'");
-      }
-      // All nodes with attribute parts have the attributeMarker set as an attribute
-      if (node.hasAttribute(attributeMarker)) {
-        node.removeAttribute(attributeMarker);
-
-        let dynamicAttributes = filter.call(node.attributes, attribute => attribute.value === attributeMarker).length;
-        if (node.getAttribute('style') === IEStyleMarker) {
-          dynamicAttributes += 1;
+      // If it is not a marker for a Part, it is a regular comment
+    } else {
+      // If the node is an ElementNode, it may contain AttributeParts
+      if (node.nodeType === 1) {
+        // If the node has the failMarker, the context was incorrectly recognised as a Node context
+        // This happens when an attribute literal contains the '>' character
+        // There is no way to fix this, so throw an error to alert the developer to fix it
+        if (node.hasAttribute(failMarker)) {
+          throw new Error("The '>' character is not allowed in attribute literals. Replace with '&gt;'");
         }
-        for (let i = 0; i < dynamicAttributes; i++) {
-          const attributeMatch = lastAttributeNameRegex.exec(strings[parts.length]);
-          const attribute = attributeMatch[1];
-          parts.push({ type: AttributePart, path, attribute });
+        // If the node has any AttributeParts, it will have the attributeMarker attribute set
+        if (node.hasAttribute(attributeMarker)) {
+          node.removeAttribute(attributeMarker);
+
+          // Find the number of dynamic attributes by checking all attribute values against the attributeMarker
+          let dynamicAttributes = filter.call(node.attributes, attribute => attribute.value === attributeMarker).length;
+
+          // If the node has the 'style' attribute, test against IEStyleMarker to check if the attribute is dynamic
+          if (node.getAttribute('style') === IEStyleMarker) {
+            dynamicAttributes += 1;
+          }
+
+          for (let i = 0; i < dynamicAttributes; i++) {
+            // Find the name of this AttributePart using the lastAttributeNameRegex on the string before this part
+            const attribute = lastAttributeNameRegex.exec(strings[parts.length])[1];
+            parts.push({ type: AttributePart, path, attribute });
+          }
         }
       }
-    }
-    const children = node.childNodes;
-    const length = children.length;
-    for (let i = 0; i < length; i++) {
-      recursiveIndex(children[i], path.concat([i]));
+
+      // Recursively search all children of this node
+      const children = node.childNodes;
+      const length = children.length;
+      for (let i = 0; i < length; i++) {
+        recursiveSearch(children[i], path.concat([i]));
+      }
     }
   };
 
-  recursiveIndex(template.content, []);
+  // Recursively search the content of the template for parts
+  recursiveSearch(template.content, []);
+
+  // If we found less parts than we should, something went wrong
+  // Most likely a double attribute assignment was dropped by the HTML parser
+  // Throw an error and warn the developer
   if (parts.length < strings.length - 1) {
     throw new Error("Double attribute assignments are not allowed: '<div a=${0} a=${0}>'");
   }
