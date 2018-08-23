@@ -24,6 +24,7 @@
  */
 
 import { TemplateResult, TemplateInstance } from './templates.js';
+import { moveNodes } from './dom.js';
 
 export const isSerializable = value => typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
 export const isIterable = nonPrimitive => Array.isArray(nonPrimitive) || nonPrimitive[Symbol.iterator];
@@ -33,7 +34,8 @@ export const noChange = {};
 
 // A node type for empty parts
 const emptyNode = {};
-// A node type for parts that contain an iterable
+
+// A node type for NodeParts that contain an iterable
 const iterableNode = {};
 
 export class NodePart {
@@ -130,22 +132,6 @@ export class NodePart {
       }
     }
 
-    // if (this.iterableParts.length < iterable.length) {
-    //   let after;
-    //   let before = this.afterNode ? this.afterNode.previousSibling : this.parentNode.lastChild;
-    //   const parent = this.parentNode;
-    //   do {
-    //     after = document.createTextNode('');
-    //     this.parentNode.insertBefore(after, this.afterNode);
-    //     this.iterableParts.push(new NodePart({ before, after, parent }));
-    //     before = after;
-    //   } while (this.iterableParts.length < iterable.length);
-    // } else if (this.iterableParts.length > iterable.length) {
-    //   const nodeToRemove = this.iterableParts[iterable.length].beforeNode.nextSibling;
-    //   moveNodes(this.parentNode, nodeToRemove, this.afterNode);
-    //   this.iterableParts.length = iterable.length;
-    // }
-
     let index = 0;
     let before = this.afterNode ? this.afterNode.previousSibling : this.parentNode.lastChild;
     let after;
@@ -205,40 +191,15 @@ export class NodePart {
   /**
    * Clear out the content of this NodePart
    *
-   * If the current content is part of a DocumentFragment (it is the result of a TemplateResult or an Array)
+   * If the current node is part of a DocumentFragment (this NodePart rendered a TemplateResult)
    * The current content is moved back into that fragment to be used again if the same fragment is rendered
    * Otherwise, the current content is removed from the DOM permanently
    */
   clear() {
-    moveNodes(this.parentNode, this.beforeNode, this.afterNode, this.node);
+    moveNodes(this.parentNode, this.beforeNode, this.afterNode, this.node instanceof DocumentFragment && this.node);
     this.node = emptyNode;
   }
 }
-
-const moveNodes = (parent, before, after, target) => {
-  let nodeToRemove;
-  if (before == undefined) {
-    nodeToRemove = parent.firstChild;
-  } else {
-    nodeToRemove = before && before.nextSibling;
-  }
-  if (nodeToRemove !== null) {
-    nodeToRemove = nodeToRemove || parent.firstChild;
-    let remove;
-    let nextNode;
-    if (target instanceof DocumentFragment) {
-      remove = () => target.appendChild(nodeToRemove);
-    } else {
-      remove = () => parent.removeChild(nodeToRemove);
-    }
-
-    while (nodeToRemove != after) {
-      nextNode = nodeToRemove.nextSibling;
-      remove();
-      nodeToRemove = nextNode;
-    }
-  }
-};
 
 // The node in the CommentPart constructor must be a CommentNode
 export class CommentPart {
@@ -277,7 +238,7 @@ export class AttributePart {
   _renderBoolean(boolean) {
     if (this.value !== !!boolean) {
       boolean ? this.node.setAttribute(this.name, '') : this.node.removeAttribute(this.name);
-      this.value = boolean;
+      this.value = !!boolean;
     }
   }
 
@@ -290,7 +251,7 @@ export class AttributePart {
   }
 
   _renderAttribute(string) {
-    if (string !== this.value) {
+    if (this.value !== string) {
       this.node.setAttribute(this.name, string);
       this.value = string;
     }
