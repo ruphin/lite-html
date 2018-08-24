@@ -27,20 +27,23 @@
  * Move nodes from to a new parent, or remove them from the old parent if no new parent is given
  */
 export const moveNodes = (oldParent, previous = null, after = null, newParent, before) => {
-  let nodeToMove = previous ? previous.nextSibling : oldParent.firstChild;
-  if (nodeToMove !== null) {
-    // If the new Parent is a Node, we move the nodes instead of removing them
-    let move;
-    if (newParent instanceof Node) {
-      move = () => newParent.insertBefore(nodeToMove, before);
+  if (oldParent.firstChild) {
+    const range = document.createRange();
+    if (previous) {
+      range.setStartAfter(previous);
     } else {
-      move = () => oldParent.removeChild(nodeToMove);
+      range.setStart(oldParent, 0);
     }
-    let nextNode;
-    while (nodeToMove !== after) {
-      nextNode = nodeToMove.nextSibling;
-      move(nodeToMove);
-      nodeToMove = nextNode;
+    if (after) {
+      range.setEndBefore(after);
+    } else {
+      range.setEnd(oldParent, oldParent.childNodes.length);
+    }
+    if (newParent instanceof Node) {
+      const fragment = range.extractContents();
+      newParent.insertBefore(fragment, before);
+    } else {
+      range.deleteContents();
     }
   }
 };
