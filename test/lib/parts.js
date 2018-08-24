@@ -23,8 +23,9 @@
  * SOFTWARE.
  */
 
-import { isSerializable, isIterable, AttributePart, CommentPart, NodePart } from '../../src/lib/parts.js';
+import { noChange, isSerializable, isIterable, AttributePart, CommentPart, NodePart } from '../../src/lib/parts.js';
 import { TemplateResult } from '../../src/lib/templates.js';
+import { when } from '../../src/directives/when.js';
 
 const html = (strings, ...values) => new TemplateResult(strings, values);
 const fragmentString = documentFragment => [].map.call(documentFragment.childNodes, node => node.outerHTML).join('');
@@ -94,13 +95,13 @@ describe('parts', () => {
     it(`uses the correct render function`, () => {
       const node = document.createElement('div');
       let part = new AttributePart({ node, attribute: 'a' });
-      expect(part.render === part._renderAttribute).to.be.true;
+      expect(part._render === part._renderAttribute).to.be.true;
       part = new AttributePart({ node, attribute: '.a' });
-      expect(part.render === part._renderProperty).to.be.true;
+      expect(part._render === part._renderProperty).to.be.true;
       part = new AttributePart({ node, attribute: '?a' });
-      expect(part.render === part._renderBoolean).to.be.true;
+      expect(part._render === part._renderBoolean).to.be.true;
       part = new AttributePart({ node, attribute: '@a' });
-      expect(part.render === part._renderEvent).to.be.true;
+      expect(part._render === part._renderEvent).to.be.true;
     });
 
     it(`renders attributes`, () => {
@@ -190,6 +191,15 @@ describe('parts', () => {
       expect(counter).to.equal(1);
       expect(otherCounter).to.equal(2);
     });
+
+    it(`renders directives`, () => {
+      const node = document.createElement('div');
+      const part = new AttributePart({ node, attribute: 'a' });
+      part.render(when(true, 'true', 'false'));
+      expect(node.getAttribute('a')).to.equal('true');
+      part.render(when(false, 'true', 'false'));
+      expect(node.getAttribute('a')).to.equal('false');
+    });
   });
 
   describe('CommentPart', () => {
@@ -244,6 +254,40 @@ describe('parts', () => {
       const newParent = document.createElement('div');
       const part = new NodePart({ node: fragment.content, parent: newParent });
       expect(part.parentNode === newParent).to.be.true;
+    });
+
+    describe('render', () => {
+      it(`renders directives`, () => {
+        const { node, parent } = setupNodes();
+        const part = new NodePart({ node });
+        part.render(when(true, 'true', 'false'));
+        expect(parent.outerHTML).to.equal('<div><span></span>true<span></span></div>');
+        part.render(when(false, 'true', 'false'));
+        expect(parent.outerHTML).to.equal('<div><span></span>false<span></span></div>');
+      });
+
+      it(`does nothing when rendering 'noChange'`, () => {
+        const { node, parent } = setupNodes();
+        const part = new NodePart({ node });
+        part.render('test');
+        expect(parent.outerHTML).to.equal('<div><span></span>test<span></span></div>');
+        part.render(noChange);
+        expect(parent.outerHTML).to.equal('<div><span></span>test<span></span></div>');
+      });
+
+      it(`resists XSS attacks`, () => {
+        const { parent } = setupNodes();
+        const part = new NodePart({ parent });
+        part.render('<script>alert(true)</script>');
+        expect(parent.outerHTML).to.equal('<div>&lt;script&gt;alert(true)&lt;/script&gt;</div>');
+      });
+
+      it(`does not render HTML-like strings as HTML`, () => {
+        const { parent } = setupNodes();
+        const part = new NodePart({ parent });
+        part.render('<div><span></span></div>');
+        expect(parent.outerHTML).to.equal('<div>&lt;div&gt;&lt;span&gt;&lt;/span&gt;&lt;/div&gt;</div>');
+      });
     });
 
     describe('clear', () => {
@@ -576,14 +620,14 @@ describe('parts', () => {
           const part = new NodePart({ node });
           const promise = new Promise(() => {});
           part._renderPromise(promise);
-          expect(parent.outerHTML).to.equal('<div><span></span><span></span></div>');
+          expect(parent.outerHTML).to.equal('<div><span></span><!--marker--><span></span></div>');
         }
         {
           const { parent } = setupNodes();
           const part = new NodePart({ parent });
           const promise = new Promise(() => {});
           part._renderPromise(promise);
-          expect(parent.outerHTML).to.equal('<div></div>');
+          expect(parent.outerHTML).to.equal('<div><span></span><!--marker--><span></span></div>');
         }
       });
 
@@ -614,7 +658,7 @@ describe('parts', () => {
             setTimeout(() => resolve('string'), 10);
           });
           part._renderPromise(promise);
-          expect(parent.outerHTML).to.equal('<div><span></span><span></span></div>');
+          expect(parent.outerHTML).to.equal('<div><span></span><!--marker--><span></span></div>');
           await promise;
           expect(parent.outerHTML).to.equal('<div><span></span>string<span></span></div>');
         }
@@ -625,7 +669,7 @@ describe('parts', () => {
             setTimeout(() => resolve('string'), 10);
           });
           part._renderPromise(promise);
-          expect(parent.outerHTML).to.equal('<div></div>');
+          expect(parent.outerHTML).to.equal('<div><span></span><!--marker--><span></span></div>');
           await promise;
           expect(parent.outerHTML).to.equal('<div>string</div>');
         }
@@ -643,9 +687,9 @@ describe('parts', () => {
           });
           part._renderPromise(firstPromise);
           part._renderPromise(secondPromise);
-          expect(parent.outerHTML).to.equal('<div><span></span><span></span></div>');
+          expect(parent.outerHTML).to.equal('<div><span></span><!--marker--><span></span></div>');
           await firstPromise;
-          expect(parent.outerHTML).to.equal('<div><span></span><span></span></div>');
+          expect(parent.outerHTML).to.equal('<div><span></span><!--marker--><span></span></div>');
           await secondPromise;
           expect(parent.outerHTML).to.equal('<div><span></span>good<span></span></div>');
         }
@@ -660,9 +704,9 @@ describe('parts', () => {
           });
           part._renderPromise(firstPromise);
           part._renderPromise(secondPromise);
-          expect(parent.outerHTML).to.equal('<div></div>');
+          expect(parent.outerHTML).to.equal('<div><span></span><!--marker--><span></span></div>');
           await firstPromise;
-          expect(parent.outerHTML).to.equal('<div></div>');
+          expect(parent.outerHTML).to.equal('<div><span></span><!--marker--><span></span></div>');
           await secondPromise;
           expect(parent.outerHTML).to.equal('<div>good</div>');
         }
@@ -706,11 +750,11 @@ describe('parts', () => {
             setTimeout(() => resolve('good'), 20);
           });
           part._renderPromise(firstPromise);
-          part.render('notgood');
+          part.render('intermediate');
           part._renderPromise(secondPromise);
-          expect(parent.outerHTML).to.equal('<div><span></span><span></span></div>');
+          expect(parent.outerHTML).to.equal('<div><span></span>intermediate<span></span></div>');
           await firstPromise;
-          expect(parent.outerHTML).to.equal('<div><span></span><span></span></div>');
+          expect(parent.outerHTML).to.equal('<div><span></span>intermediate<span></span></div>');
           await secondPromise;
           expect(parent.outerHTML).to.equal('<div><span></span>good<span></span></div>');
         }
@@ -724,13 +768,48 @@ describe('parts', () => {
             setTimeout(() => resolve('good'), 20);
           });
           part._renderPromise(firstPromise);
-          part.render('notgood');
+          part.render('intermediate');
           part._renderPromise(secondPromise);
-          expect(parent.outerHTML).to.equal('<div></div>');
+          expect(parent.outerHTML).to.equal('<div>intermediate</div>');
           await firstPromise;
-          expect(parent.outerHTML).to.equal('<div></div>');
+          expect(parent.outerHTML).to.equal('<div>intermediate</div>');
           await secondPromise;
           expect(parent.outerHTML).to.equal('<div>good</div>');
+        }
+      });
+
+      it(`does not cause additional renders when re-rendering the same promise`, async () => {
+        {
+          const { node } = setupNodes();
+          const part = new NodePart({ node });
+          const promise = Promise.resolve('result');
+          let renderCount = 0;
+          let previousValue;
+          let sameValue = false;
+          part.render = value => {
+            renderCount++;
+            sameValue = value === previousValue;
+            previousValue = value;
+          };
+          part._renderPromise(promise);
+          part._renderPromise(promise);
+          expect(renderCount).to.equal(0);
+          expect(sameValue).to.be.false;
+          await promise;
+          expect(renderCount).to.equal(1);
+          expect(sameValue).to.be.false;
+          part._renderPromise(promise);
+          part._renderPromise(promise);
+          expect(renderCount).to.equal(1);
+          await promise;
+          expect(renderCount).to.equal(2);
+          expect(sameValue).to.be.true;
+          part._renderPromise(promise);
+          part._renderPromise(promise);
+          expect(renderCount).to.equal(2);
+          await promise;
+          expect(renderCount).to.equal(3);
+          expect(sameValue).to.be.true;
         }
       });
     });

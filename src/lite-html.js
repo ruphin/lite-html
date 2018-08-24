@@ -28,6 +28,9 @@ import { NodePart } from './lib/parts.js';
 
 export { noChange } from './lib/parts.js';
 
+// A lookup map for NodeParts that represent the content of a render target
+const nodeParts = new WeakMap();
+
 /**
  * Tagging function to tag JavaScript template string literals as HTML
  *
@@ -49,11 +52,11 @@ export const html = (strings, ...values) => {
  */
 export const render = (content, target) => {
   // Check if the target has a NodePart that represents its content
-  let part = target.__nodePart;
+  let part = nodeParts.get(target);
   if (!part) {
     // If it does not, create a new NodePart
     part = new NodePart({ parent: target });
-    target.__nodePart = part;
+    nodeParts.set(target, part);
   }
   // Task the NodePart of this target to render the content
   part.render(content);

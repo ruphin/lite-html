@@ -25,6 +25,7 @@
 
 import { TemplateResult, TemplateInstance } from './templates.js';
 import { moveNodes } from './dom.js';
+import { processDirectives } from './directive.js';
 
 export const isSerializable = value => typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
 export const isIterable = nonPrimitive => Array.isArray(nonPrimitive) || nonPrimitive[Symbol.iterator];
@@ -52,26 +53,29 @@ export class NodePart {
   }
 
   render(value) {
-    if (value === noChange) {
-      return;
+    value = processDirectives(value, this);
+    if (value !== noChange) {
+      if (value == null) {
+        this.clear();
+      } else if (isSerializable(value)) {
+        this._renderText(value);
+      } else if (value instanceof TemplateResult) {
+        this._renderTemplateResult(value);
+      } else if (isIterable(value)) {
+        this._renderIterable(value);
+      } else if (value instanceof Node) {
+        this._renderNode(value);
+      } else if (value.then !== undefined) {
+        this._renderPromise(value);
+        // Return here because we do not want to set `this.value` with the promise
+        return;
+      } else {
+        value = String(value);
+        this._renderText(value);
+      }
+      this.promise = undefined;
+      this.value = value;
     }
-    if (value == null) {
-      this.clear();
-    } else if (isSerializable(value)) {
-      this._renderText(value);
-    } else if (value instanceof TemplateResult) {
-      this._renderTemplateResult(value);
-    } else if (isIterable(value)) {
-      this._renderIterable(value);
-    } else if (value instanceof Node) {
-      this._renderNode(value);
-    } else if (value.then !== undefined) {
-      this._renderPromise(value);
-    } else {
-      value = String(value);
-      this._renderText(value);
-    }
-    this.value = value;
   }
 
   /**
@@ -173,15 +177,13 @@ export class NodePart {
    * Render the result of a promise in this part
    */
   _renderPromise(promise) {
-    // If the promise is not the last value or promise
-    if (this.value !== promise && this.promise !== promise) {
-      this.clear();
+    if (this.promise !== promise) {
       this.promise = promise;
-      this.value = promise;
       // When the promise resolves, render the result of that promise
       promise.then(value => {
         // Render the promise result only if the last rendered value was the promise
-        if (this.value === promise) {
+        if (this.promise === promise) {
+          this.promise = undefined;
           this.render(value);
         }
       });
@@ -217,17 +219,24 @@ export class AttributePart {
     this.node = node;
     switch (attribute[0]) {
       case '.':
-        this.render = this._renderProperty;
+        this._render = this._renderProperty;
       case '?':
-        this.render = this.render || this._renderBoolean;
+        this._render = this._render || this._renderBoolean;
       case '@':
-        this.render = this.render || this._renderEvent;
+        this._render = this._render || this._renderEvent;
         this.node.removeAttribute(attribute);
         this.name = attribute.slice(1);
         break;
       default:
-        this.render = this._renderAttribute;
+        this._render = this._renderAttribute;
         this.name = attribute;
+    }
+  }
+
+  render(value) {
+    value = processDirectives(value, this);
+    if (value !== noChange) {
+      this._render(value);
     }
   }
 
