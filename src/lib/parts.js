@@ -143,7 +143,7 @@ export class NodePart {
     for (const value of iterable) {
       let part = this.iterableParts[index];
       if (part === undefined) {
-        after = document.createTextNode('');
+        after = document.createComment('');
         this.parentNode.insertBefore(after, this.afterNode);
         part = new NodePart({ before, after, parent });
         this.iterableParts.push(part);
