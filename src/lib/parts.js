@@ -46,6 +46,7 @@ export class NodePart {
   constructor({ node, parent, before, after }) {
     this.node = node || emptyNode;
     this.value = noChange;
+    this.promise = undefined;
 
     this.parentNode = parent || (node && node.parentNode);
     this.beforeNode = before || (node && node.previousSibling);
