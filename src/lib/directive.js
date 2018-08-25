@@ -22,19 +22,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-import { noChange } from './parts.js';
 
-export const processDirectives = (value, part) => {
-  if (value && value.__directive) {
-    while (value && value.__directive) {
-      value = value(part);
-    }
-    value = noChange;
-  }
-  return value;
-};
+const directives = new WeakMap();
+
+export const isDirective = value => directives.has(value)
 
 export const directive = directive => {
-  directive.__directive = true;
+  directives.set(directive, null);
   return directive;
 };

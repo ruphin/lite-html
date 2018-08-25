@@ -25,7 +25,7 @@
 
 import { TemplateResult, TemplateInstance } from './templates.js';
 import { moveNodes } from './dom.js';
-import { processDirectives } from './directive.js';
+import { isDirective } from './directive.js';
 
 export const isSerializable = value => typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
 export const isIterable = nonPrimitive => Array.isArray(nonPrimitive) || nonPrimitive[Symbol.iterator];
@@ -53,8 +53,9 @@ export class NodePart {
   }
 
   render(value) {
-    value = processDirectives(value, this);
-    if (value !== noChange) {
+    if (isDirective(value)) {
+      value(this);
+    } else if (value !== noChange) {
       if (value == null) {
         this.clear();
       } else if (isSerializable(value)) {
@@ -234,8 +235,9 @@ export class AttributePart {
   }
 
   render(value) {
-    value = processDirectives(value, this);
-    if (value !== noChange) {
+    if (isDirective(value)) {
+      value(this);
+    } else if (value !== noChange) {
       this._render(value);
     }
   }
