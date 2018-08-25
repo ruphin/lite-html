@@ -139,9 +139,10 @@ export class NodePart {
     let index = 0;
     let before = this.afterNode ? this.afterNode.previousSibling : this.parentNode.lastChild;
     let after;
+    let part;
     const parent = this.parentNode;
     for (const value of iterable) {
-      let part = this.iterableParts[index];
+      part = this.iterableParts[index];
       if (part === undefined) {
         after = document.createTextNode('');
         this.parentNode.insertBefore(after, this.afterNode);
@@ -152,11 +153,8 @@ export class NodePart {
       part.render(value);
       index++;
     }
-    if (index === 0) {
-      moveNodes(this.parentNode, this.beforeNode, this.afterNode);
-    } else if (index < this.iterableParts.length) {
-      const lastPart = this.iterableParts[index - 1];
-      moveNodes(this.parentNode, lastPart.afterNode, this.afterNode);
+    if (index < this.iterableParts.length) {
+      moveNodes(this.parentNode, part ? part.afterNode : this.beforeNode, this.afterNode);
     }
     this.iterableParts.length = index;
   }
