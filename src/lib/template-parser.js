@@ -36,37 +36,37 @@ export const commentMarkerTag = `--><!--${commentMarker}--><!-- `;
 // a nodeMarkerTag is inserted as an attribute due to an attribute containing `>`
 export const nodeMarkerTag = `<!--${nodeMarker}-->`;
 
-export const attributeContext = Symbol('attributeContext');
-export const commentContext = Symbol('commentContext');
-export const nodeContext = Symbol('nodeContext');
-export const unchangedContext = Symbol('unchangedContext');
+export const attributeContext = {};
+export const commentContext = {};
+export const nodeContext = {};
+export const unchangedContext = {};
 
-const contextMap = new Map();
-contextMap.set(attributeContext, attributeMarkerTag);
-contextMap.set(commentContext, commentMarkerTag);
-contextMap.set(nodeContext, nodeMarkerTag);
+const markers = new Map();
+markers.set(attributeContext, attributeMarkerTag);
+markers.set(commentContext, commentMarkerTag);
+markers.set(nodeContext, nodeMarkerTag);
 
 export const parseContext = string => {
   const openComment = string.lastIndexOf('<!--');
   const closeComment = string.indexOf('-->', openComment + 1);
   const commentClosed = closeComment > -1;
-  let type;
+  let context;
   if (openComment > -1 && !commentClosed) {
-    type = commentContext;
+    context = commentContext;
   } else {
     const closeTag = string.lastIndexOf('>');
     const openTag = string.indexOf('<', closeTag + 1);
     if (openTag > -1) {
-      type = attributeContext;
+      context = attributeContext;
     } else {
       if (closeTag > -1) {
-        type = nodeContext;
+        context = nodeContext;
       } else {
-        type = unchangedContext;
+        context = unchangedContext;
       }
     }
   }
-  return { commentClosed, type };
+  return { commentClosed, context };
 };
 
 export const parseTemplate = strings => {
@@ -75,15 +75,14 @@ export const parseTemplate = strings => {
   let currentContext = nodeContext;
   for (let i = 0; i < lastStringIndex; i++) {
     const string = strings[i];
-    const context = parseContext(string);
-    if ((currentContext !== commentContext || context.commentClosed) && context.type !== unchangedContext) {
-      currentContext = context.type;
+    const { commentClosed, context } = parseContext(string);
+    if ((currentContext !== commentContext || commentClosed) && context !== unchangedContext) {
+      currentContext = context;
     }
     if (currentContext === attributeContext && string.slice(-1) !== '=') {
       throw new Error('Only bare attribute parts are allowed: `<div a=${0}>`');
     }
-    html.push(string);
-    html.push(contextMap.get(currentContext));
+    html.push(string + markers.get(currentContext));
   }
 
   html.push(strings[lastStringIndex]);

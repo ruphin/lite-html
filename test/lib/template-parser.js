@@ -43,11 +43,11 @@ const html = strings => strings;
 describe('templateParser', () => {
   describe('parseContext', () => {
     it(`detects comment contexts`, () => {
-      expect(parseContext('<!--').type).to.equal(commentContext);
-      expect(parseContext('<div><!--').type).to.equal(commentContext);
-      expect(parseContext('<!-- ').type).to.equal(commentContext);
-      expect(parseContext('<!-- <div>').type).to.equal(commentContext);
-      expect(parseContext('<!-- a=').type).to.equal(commentContext);
+      expect(parseContext('<!--').context).to.equal(commentContext);
+      expect(parseContext('<div><!--').context).to.equal(commentContext);
+      expect(parseContext('<!-- ').context).to.equal(commentContext);
+      expect(parseContext('<!-- <div>').context).to.equal(commentContext);
+      expect(parseContext('<!-- a=').context).to.equal(commentContext);
     });
 
     it(`detects closed comments`, () => {
@@ -59,29 +59,29 @@ describe('templateParser', () => {
     });
 
     it(`detects unchanged contexts`, () => {
-      expect(parseContext('').type).to.equal(unchangedContext);
-      expect(parseContext(' ').type).to.equal(unchangedContext);
-      expect(parseContext('some text').type).to.equal(unchangedContext);
-      expect(parseContext('👍').type).to.equal(unchangedContext);
+      expect(parseContext('').context).to.equal(unchangedContext);
+      expect(parseContext(' ').context).to.equal(unchangedContext);
+      expect(parseContext('some text').context).to.equal(unchangedContext);
+      expect(parseContext('👍').context).to.equal(unchangedContext);
     });
 
     it(`detects node contexts`, () => {
-      expect(parseContext('<div>').type).to.equal(nodeContext);
-      expect(parseContext('<div> ').type).to.equal(nodeContext);
-      expect(parseContext('<div>text').type).to.equal(nodeContext);
-      expect(parseContext('<div> a=').type).to.equal(nodeContext);
-      expect(parseContext('<div>text<div></div>').type).to.equal(nodeContext);
-      expect(parseContext('<!-->').type).to.equal(nodeContext);
-      expect(parseContext('<!-- -->').type).to.equal(nodeContext);
+      expect(parseContext('<div>').context).to.equal(nodeContext);
+      expect(parseContext('<div> ').context).to.equal(nodeContext);
+      expect(parseContext('<div>text').context).to.equal(nodeContext);
+      expect(parseContext('<div> a=').context).to.equal(nodeContext);
+      expect(parseContext('<div>text<div></div>').context).to.equal(nodeContext);
+      expect(parseContext('<!-->').context).to.equal(nodeContext);
+      expect(parseContext('<!-- -->').context).to.equal(nodeContext);
     });
 
     it(`detects attribute contexts`, () => {
-      expect(parseContext('<div a=').type).to.equal(attributeContext);
-      expect(parseContext('<div a =').type).to.equal(attributeContext);
+      expect(parseContext('<div a=').context).to.equal(attributeContext);
+      expect(parseContext('<div a =').context).to.equal(attributeContext);
     });
 
     it(`detects a node context when an attribute contains the '>' character`, () => {
-      expect(parseContext('<div a=">" b=').type).to.equal(nodeContext);
+      expect(parseContext('<div a=">" b=').context).to.equal(nodeContext);
     });
   });
 
