@@ -120,7 +120,7 @@ describe('templates', () => {
         `.template;
       const parent = document.createElement('div');
       parent.id = 'root';
-      const instance = new TemplateInstance(template, parent);
+      const instance = new TemplateInstance(template);
 
       expect(instance.parts.length).to.equal(9);
 
@@ -133,7 +133,7 @@ describe('templates', () => {
       expect(instance.parts[3] instanceof NodePart).to.be.true;
       expect(instance.parts[3].parentNode.id).to.equal('parent3');
       expect(instance.parts[4] instanceof NodePart).to.be.true;
-      expect(instance.parts[4].parentNode.id).to.equal('root');
+      expect(instance.parts[4].parentNode.nodeType).to.equal(Node.DOCUMENT_FRAGMENT_NODE);
       expect(instance.parts[5] instanceof AttributePart).to.be.true;
       expect(instance.parts[5].node.id).to.equal('node5');
       expect(instance.parts[6] instanceof AttributePart).to.be.true;

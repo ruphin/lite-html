@@ -240,20 +240,8 @@ describe('parts', () => {
 
     it(`knows what the parent node is`, () => {
       const { node, parent } = setupNodes();
-      let part = new NodePart({ parent });
+      const part = new NodePart({ node });
       expect(part.parentNode === parent).to.be.true;
-      part = new NodePart({ node });
-      expect(part.parentNode === parent).to.be.true;
-    });
-
-    it(`reassigns parents for nodes that are DocumentFragment contents`, () => {
-      const { parent } = setupNodes();
-      const fragment = document.createDocumentFragment();
-      fragment.appendChild(parent);
-      expect(fragmentString(fragment)).to.equal('<div><span></span><!--marker--><span></span></div>');
-      const newParent = document.createElement('div');
-      const part = new NodePart({ node: fragment.content, parent: newParent });
-      expect(part.parentNode === newParent).to.be.true;
     });
 
     describe('render', () => {
@@ -276,17 +264,17 @@ describe('parts', () => {
       });
 
       it(`resists XSS attacks`, () => {
-        const { parent } = setupNodes();
-        const part = new NodePart({ parent });
+        const { node, parent } = setupNodes();
+        const part = new NodePart({ node });
         part.render('<script>alert(true)</script>');
-        expect(parent.outerHTML).to.equal('<div>&lt;script&gt;alert(true)&lt;/script&gt;</div>');
+        expect(parent.outerHTML).to.equal('<div><span></span>&lt;script&gt;alert(true)&lt;/script&gt;<span></span></div>');
       });
 
       it(`does not render HTML-like strings as HTML`, () => {
-        const { parent } = setupNodes();
-        const part = new NodePart({ parent });
+        const { node, parent } = setupNodes();
+        const part = new NodePart({ node });
         part.render('<div><span></span></div>');
-        expect(parent.outerHTML).to.equal('<div>&lt;div&gt;&lt;span&gt;&lt;/span&gt;&lt;/div&gt;</div>');
+        expect(parent.outerHTML).to.equal('<div><span></span>&lt;div&gt;&lt;span&gt;&lt;/span&gt;&lt;/div&gt;<span></span></div>');
       });
     });
 
@@ -298,12 +286,6 @@ describe('parts', () => {
           part.clear();
           expect(parent.outerHTML).to.equal('<div><span></span><span></span></div>');
         }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          part.clear();
-          expect(parent.outerHTML).to.equal('<div></div>');
-        }
       });
 
       it(`moves nodes back into the DocumentFragment when clearing after rendering a TemplateResult`, () => {
@@ -312,26 +294,12 @@ describe('parts', () => {
           const part = new NodePart({ node });
           const templateResult = html`<ul><li></li></ul>`;
           part._renderTemplateResult(templateResult);
-
           const templateInstance = part.templateInstances.get(templateResult.template);
           expect(fragmentString(templateInstance.fragment)).to.equal('');
           expect(parent.outerHTML).to.equal('<div><span></span><ul><li></li></ul><span></span></div>');
           part.clear();
           expect(fragmentString(templateInstance.fragment)).to.equal('<ul><li></li></ul>');
           expect(parent.outerHTML).to.equal('<div><span></span><span></span></div>');
-        }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          const templateResult = html`<ul><li></li></ul>`;
-          part._renderTemplateResult(templateResult);
-
-          const templateInstance = part.templateInstances.get(templateResult.template);
-          expect(fragmentString(templateInstance.fragment)).to.equal('');
-          expect(parent.outerHTML).to.equal('<div><ul><li></li></ul></div>');
-          part.clear();
-          expect(fragmentString(templateInstance.fragment)).to.equal('<ul><li></li></ul>');
-          expect(parent.outerHTML).to.equal('<div></div>');
         }
       });
     });
@@ -346,14 +314,6 @@ describe('parts', () => {
           part._renderText('two');
           expect(parent.outerHTML).to.equal('<div><span></span>two<span></span></div>');
         }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          part._renderText('one');
-          expect(parent.outerHTML).to.equal('<div>one</div>');
-          part._renderText('two');
-          expect(parent.outerHTML).to.equal('<div>two</div>');
-        }
       });
 
       it(`renders numbers as strings`, () => {
@@ -365,14 +325,6 @@ describe('parts', () => {
           part._renderText(2);
           expect(parent.outerHTML).to.equal('<div><span></span>2<span></span></div>');
         }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          part._renderText(1);
-          expect(parent.outerHTML).to.equal('<div>1</div>');
-          part._renderText(2);
-          expect(parent.outerHTML).to.equal('<div>2</div>');
-        }
       });
 
       it(`renders booleans as strings in the node`, () => {
@@ -383,14 +335,6 @@ describe('parts', () => {
           expect(parent.outerHTML).to.equal('<div><span></span>true<span></span></div>');
           part._renderText(false);
           expect(parent.outerHTML).to.equal('<div><span></span>false<span></span></div>');
-        }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          part._renderText(true);
-          expect(parent.outerHTML).to.equal('<div>true</div>');
-          part._renderText(false);
-          expect(parent.outerHTML).to.equal('<div>false</div>');
         }
       });
 
@@ -420,18 +364,6 @@ describe('parts', () => {
           part._renderNode(nodeTwo);
           expect(parent.outerHTML).to.equal('<div><span></span><div node="2"></div><span></span></div>');
         }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          const nodeOne = document.createElement('div');
-          nodeOne.setAttribute('node', 1);
-          part._renderNode(nodeOne);
-          expect(parent.outerHTML).to.equal('<div><div node="1"></div></div>');
-          const nodeTwo = document.createElement('div');
-          nodeTwo.setAttribute('node', 2);
-          part._renderNode(nodeTwo);
-          expect(parent.outerHTML).to.equal('<div><div node="2"></div></div>');
-        }
       });
     });
 
@@ -444,13 +376,6 @@ describe('parts', () => {
           part._renderIterable(array);
           expect(parent.outerHTML).to.equal('<div><span></span>hello1true<span></span></div>');
         }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          const array = ['hello', 1, true];
-          part._renderIterable(array);
-          expect(parent.outerHTML).to.equal('<div>hello1true</div>');
-        }
       });
 
       it(`renders an array of different value types`, () => {
@@ -461,13 +386,6 @@ describe('parts', () => {
           part._renderIterable(array);
           expect(parent.outerHTML).to.equal('<div><span></span>hello<div></div><i></i><span></span></div>');
         }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          const array = ['hello', html`<div></div>`, document.createElement('i')];
-          part._renderIterable(array);
-          expect(parent.outerHTML).to.equal('<div>hello<div></div><i></i></div>');
-        }
       });
 
       it(`renders nested arrays`, () => {
@@ -477,13 +395,6 @@ describe('parts', () => {
           const array = [1, [2, 3], 4, 5];
           part._renderIterable(array);
           expect(parent.outerHTML).to.equal('<div><span></span>12345<span></span></div>');
-        }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          const array = [1, [2, 3], 4, 5];
-          part._renderIterable(array);
-          expect(parent.outerHTML).to.equal('<div>12345</div>');
         }
       });
 
@@ -496,15 +407,6 @@ describe('parts', () => {
           expect(parent.outerHTML).to.equal('<div><span></span><p>1</p><p>2</p><p>3</p><span></span></div>');
           part._renderIterable(array.map(i => html`<i>${i}</i>`));
           expect(parent.outerHTML).to.equal('<div><span></span><i>1</i><i>2</i><i>3</i><span></span></div>');
-        }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          const array = [1, 2, 3];
-          part._renderIterable(array.map(i => html`<p>${i}</p>`));
-          expect(parent.outerHTML).to.equal('<div><p>1</p><p>2</p><p>3</p></div>');
-          part._renderIterable(array.map(i => html`<i>${i}</i>`));
-          expect(parent.outerHTML).to.equal('<div><i>1</i><i>2</i><i>3</i></div>');
         }
       });
 
@@ -524,21 +426,6 @@ describe('parts', () => {
           part._renderIterable(array.map(i => html`<p>${i}</p>`));
           expect(parent.outerHTML).to.equal('<div><span></span><p>4</p><p>5</p><p>6</p><span></span></div>');
         }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          let array = [1, 2, 3];
-          part._renderIterable(array.map(i => html`<p>${i}</p>`));
-          expect(parent.outerHTML).to.equal('<div><p>1</p><p>2</p><p>3</p></div>');
-
-          array = [];
-          part._renderIterable(array.map(i => html`<p>${i}</p>`));
-          expect(parent.outerHTML).to.equal('<div></div>');
-
-          array = [4, 5, 6];
-          part._renderIterable(array.map(i => html`<p>${i}</p>`));
-          expect(parent.outerHTML).to.equal('<div><p>4</p><p>5</p><p>6</p></div>');
-        }
       });
 
       it(`renders additions to the array in subsequent renders`, () => {
@@ -552,16 +439,6 @@ describe('parts', () => {
           part._renderIterable(array);
           expect(parent.outerHTML).to.equal('<div><span></span>truehello1<span></span></div>');
         }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          const array = ['hello', 1];
-          part._renderIterable(array);
-          expect(parent.outerHTML).to.equal('<div>hello1</div>');
-          array.unshift(true);
-          part._renderIterable(array);
-          expect(parent.outerHTML).to.equal('<div>truehello1</div>');
-        }
       });
 
       it(`removes elements when the array shrinks`, () => {
@@ -574,16 +451,6 @@ describe('parts', () => {
           array.pop();
           part._renderIterable(array);
           expect(parent.outerHTML).to.equal('<div><span></span>hello1<span></span></div>');
-        }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          const array = ['hello', 1, true];
-          part._renderIterable(array);
-          expect(parent.outerHTML).to.equal('<div>hello1true</div>');
-          array.pop();
-          part._renderIterable(array);
-          expect(parent.outerHTML).to.equal('<div>hello1</div>');
         }
       });
 
@@ -599,17 +466,6 @@ describe('parts', () => {
           part._renderIterable([1, 2, 3, 4, 5]);
           expect(parent.outerHTML).to.equal('<div><span></span>12345<span></span></div>');
         }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          const array = ['hello', 1, true];
-          part._renderIterable(array);
-          expect(parent.outerHTML).to.equal('<div>hello1true</div>');
-          part._renderText('string');
-          expect(parent.outerHTML).to.equal('<div>string</div>');
-          part._renderIterable([1, 2]);
-          expect(parent.outerHTML).to.equal('<div>12</div>');
-        }
       });
     });
 
@@ -618,13 +474,6 @@ describe('parts', () => {
         {
           const { node, parent } = setupNodes();
           const part = new NodePart({ node });
-          const promise = new Promise(() => {});
-          part._renderPromise(promise);
-          expect(parent.outerHTML).to.equal('<div><span></span><!--marker--><span></span></div>');
-        }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
           const promise = new Promise(() => {});
           part._renderPromise(promise);
           expect(parent.outerHTML).to.equal('<div><span></span><!--marker--><span></span></div>');
@@ -640,14 +489,6 @@ describe('parts', () => {
           await promise;
           expect(parent.outerHTML).to.equal('<div><span></span>string<span></span></div>');
         }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          const promise = Promise.resolve('string');
-          part._renderPromise(promise);
-          await promise;
-          expect(parent.outerHTML).to.equal('<div>string</div>');
-        }
       });
 
       it(`renders the promise result once it resolves`, async () => {
@@ -661,17 +502,6 @@ describe('parts', () => {
           expect(parent.outerHTML).to.equal('<div><span></span><!--marker--><span></span></div>');
           await promise;
           expect(parent.outerHTML).to.equal('<div><span></span>string<span></span></div>');
-        }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          const promise = new Promise(function(resolve) {
-            setTimeout(() => resolve('string'), 10);
-          });
-          part._renderPromise(promise);
-          expect(parent.outerHTML).to.equal('<div><span></span><!--marker--><span></span></div>');
-          await promise;
-          expect(parent.outerHTML).to.equal('<div>string</div>');
         }
       });
 
@@ -693,23 +523,6 @@ describe('parts', () => {
           await secondPromise;
           expect(parent.outerHTML).to.equal('<div><span></span>good<span></span></div>');
         }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          const firstPromise = new Promise(function(resolve) {
-            setTimeout(() => resolve('bad'), 10);
-          });
-          const secondPromise = new Promise(function(resolve) {
-            setTimeout(() => resolve('good'), 20);
-          });
-          part._renderPromise(firstPromise);
-          part._renderPromise(secondPromise);
-          expect(parent.outerHTML).to.equal('<div><span></span><!--marker--><span></span></div>');
-          await firstPromise;
-          expect(parent.outerHTML).to.equal('<div><span></span><!--marker--><span></span></div>');
-          await secondPromise;
-          expect(parent.outerHTML).to.equal('<div>good</div>');
-        }
       });
 
       it(`does not override values rendered after the promise`, async () => {
@@ -724,18 +537,6 @@ describe('parts', () => {
           expect(parent.outerHTML).to.equal('<div><span></span>good<span></span></div>');
           await firstPromise;
           expect(parent.outerHTML).to.equal('<div><span></span>good<span></span></div>');
-        }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          const firstPromise = new Promise(function(resolve) {
-            setTimeout(() => resolve('bad'), 10);
-          });
-          part._renderPromise(firstPromise);
-          part.render('good');
-          expect(parent.outerHTML).to.equal('<div>good</div>');
-          await firstPromise;
-          expect(parent.outerHTML).to.equal('<div>good</div>');
         }
       });
 
@@ -757,24 +558,6 @@ describe('parts', () => {
           expect(parent.outerHTML).to.equal('<div><span></span>intermediate<span></span></div>');
           await secondPromise;
           expect(parent.outerHTML).to.equal('<div><span></span>good<span></span></div>');
-        }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          const firstPromise = new Promise(function(resolve) {
-            setTimeout(() => resolve('bad'), 10);
-          });
-          const secondPromise = new Promise(function(resolve) {
-            setTimeout(() => resolve('good'), 20);
-          });
-          part._renderPromise(firstPromise);
-          part.render('intermediate');
-          part._renderPromise(secondPromise);
-          expect(parent.outerHTML).to.equal('<div>intermediate</div>');
-          await firstPromise;
-          expect(parent.outerHTML).to.equal('<div>intermediate</div>');
-          await secondPromise;
-          expect(parent.outerHTML).to.equal('<div>good</div>');
         }
       });
 
@@ -823,13 +606,6 @@ describe('parts', () => {
           part._renderTemplateResult(templateResult);
           expect(parent.outerHTML).to.equal('<div><span></span><p></p><span></span></div>');
         }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          const templateResult = html`<p></p>`;
-          part._renderTemplateResult(templateResult);
-          expect(parent.outerHTML).to.equal('<div><p></p></div>');
-        }
       });
 
       it(`renders the values inside templates`, () => {
@@ -839,13 +615,6 @@ describe('parts', () => {
           const templateResult = value => html`<p>${value}</p>`;
           part._renderTemplateResult(templateResult(1));
           expect(parent.outerHTML).to.equal('<div><span></span><p>1</p><span></span></div>');
-        }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          const templateResult = value => html`<p>${value}</p>`;
-          part._renderTemplateResult(templateResult(1));
-          expect(parent.outerHTML).to.equal('<div><p>1</p></div>');
         }
       });
 
@@ -857,13 +626,6 @@ describe('parts', () => {
           part._renderTemplateResult(templateResult(html`<i>${1}</i>`));
           expect(parent.outerHTML).to.equal('<div><span></span><p><i>1</i></p><span></span></div>');
         }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          const templateResult = value => html`<p>${value}</p>`;
-          part._renderTemplateResult(templateResult(html`<i>${1}</i>`));
-          expect(parent.outerHTML).to.equal('<div><p><i>1</i></p></div>');
-        }
       });
 
       it(`renders nested templates in the root of the template`, () => {
@@ -873,13 +635,6 @@ describe('parts', () => {
           const templateResult = value => html`${value}`;
           part._renderTemplateResult(templateResult(html`<i>${1}</i>`));
           expect(parent.outerHTML).to.equal('<div><span></span><i>1</i><span></span></div>');
-        }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          const templateResult = value => html`${value}`;
-          part._renderTemplateResult(templateResult(html`<i>${1}</i>`));
-          expect(parent.outerHTML).to.equal('<div><i>1</i></div>');
         }
       });
 
@@ -916,20 +671,6 @@ describe('parts', () => {
           part._renderTemplateResult(two);
           expect(parent.outerHTML).to.equal('<div><span></span><i></i><span></span></div>');
         }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          const one = html`<p></p>`;
-          const two = html`<i></i>`;
-          part._renderTemplateResult(one);
-          expect(parent.outerHTML).to.equal('<div><p></p></div>');
-          part._renderTemplateResult(two);
-          expect(parent.outerHTML).to.equal('<div><i></i></div>');
-          part._renderTemplateResult(one);
-          expect(parent.outerHTML).to.equal('<div><p></p></div>');
-          part._renderTemplateResult(two);
-          expect(parent.outerHTML).to.equal('<div><i></i></div>');
-        }
       });
 
       it(`caches the template instances`, () => {
@@ -949,22 +690,6 @@ describe('parts', () => {
           part._renderTemplateResult(two);
           expect(parent.outerHTML).to.equal('<div><span></span><i id="b"></i><span></span></div>');
         }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          const one = html`<p></p>`;
-          const two = html`<i></i>`;
-          part._renderTemplateResult(one);
-          parent.querySelector('p').id = 'a';
-          expect(parent.outerHTML).to.equal('<div><p id="a"></p></div>');
-          part._renderTemplateResult(two);
-          parent.querySelector('i').id = 'b';
-          expect(parent.outerHTML).to.equal('<div><i id="b"></i></div>');
-          part._renderTemplateResult(one);
-          expect(parent.outerHTML).to.equal('<div><p id="a"></p></div>');
-          part._renderTemplateResult(two);
-          expect(parent.outerHTML).to.equal('<div><i id="b"></i></div>');
-        }
       });
 
       it(`re-uses the template instances but replaces the values`, () => {
@@ -983,22 +708,6 @@ describe('parts', () => {
           expect(parent.outerHTML).to.equal('<div><span></span><p id="a">3</p><span></span></div>');
           part._renderTemplateResult(two(4));
           expect(parent.outerHTML).to.equal('<div><span></span><i id="b">4</i><span></span></div>');
-        }
-        {
-          const { parent } = setupNodes();
-          const part = new NodePart({ parent });
-          const one = value => html`<p>${value}</p>`;
-          const two = value => html`<i>${value}</i>`;
-          part._renderTemplateResult(one(1));
-          parent.querySelector('p').id = 'a';
-          expect(parent.outerHTML).to.equal('<div><p id="a">1</p></div>');
-          part._renderTemplateResult(two(2));
-          parent.querySelector('i').id = 'b';
-          expect(parent.outerHTML).to.equal('<div><i id="b">2</i></div>');
-          part._renderTemplateResult(one(3));
-          expect(parent.outerHTML).to.equal('<div><p id="a">3</p></div>');
-          part._renderTemplateResult(two(4));
-          expect(parent.outerHTML).to.equal('<div><i id="b">4</i></div>');
         }
       });
     });

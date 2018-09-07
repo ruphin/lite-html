@@ -36,22 +36,23 @@ describe('unsafeHTML', () => {
   });
 
   it('should render a string as HTML', () => {
-    const HTML = '<span></span>';
+    const HTML = '<span>1</span>';
     render(html`${unsafeHTML(HTML)}`, container);
     expect(container.innerHTML).to.equal(HTML);
   });
 
   it('works when alternated with other renders', () => {
-    const HTML = '<span></span>';
-    render(html`${unsafeHTML(HTML)}`, container);
-    render(html`<div></div>`, container);
-    expect(container.innerHTML).to.equal('<div></div>');
-    render(html`${unsafeHTML(HTML)}`, container);
+    const HTML = '<span>2</span>';
+    const thing = r => html`${r}`;
+    render(thing(unsafeHTML(HTML)), container);
+    render(html`<div>3</div>`, container);
+    expect(container.innerHTML).to.equal('<div>3</div>');
+    render(thing(unsafeHTML(HTML)), container);
     expect(container.innerHTML).to.equal(HTML);
   });
 
   it('works with promises', async () => {
-    const HTML = '<span></span>';
+    const HTML = '<span>4</span>';
     const promise = Promise.resolve(unsafeHTML(HTML));
     render(html`${promise}`, container);
     await promise;

@@ -40,16 +40,22 @@ const emptyNode = {};
 const iterableNode = {};
 
 export class NodePart {
-  // node OR parent _must_ be defined
+  // node OR after _must_ be defined
   // If a node is defined, this NodePart represents the position of that node in the tree
-  // If a only a parent is defined, this NodePart represents the content of the parent
-  constructor({ node, parent, before, after }) {
-    this.node = node || emptyNode;
+  // If a only after is defined, this NodePart represents the content right before that node
+  constructor({ node } = {}) {
+    if (node != null) {
+      this.node = node;
+      this.afterNode = node.nextSibling || node.parentNode.appendChild(document.createTextNode(''));
+      this.beforeNode = node.previousSibling;
+    } else {
+      this.node = emptyNode;
+    }
     this.value = noChange;
+  }
 
-    this.parentNode = parent || (node && node.parentNode);
-    this.beforeNode = before || (node && node.previousSibling);
-    this.afterNode = after || (node && node.nextSibling);
+  get parentNode() {
+    return this.afterNode.parentNode;
   }
 
   render(value) {
@@ -114,10 +120,12 @@ export class NodePart {
     }
     if (this.node !== instance.fragment) {
       this.clear();
-      this.parentNode.insertBefore(instance.fragment, this.afterNode);
       this.node = instance.fragment;
+      instance.render(templateResult.values);
+      this.parentNode.insertBefore(instance.fragment, this.afterNode);
+    } else {
+      instance.render(templateResult.values);
     }
-    instance.render(templateResult.values);
   }
 
   /**
@@ -138,15 +146,17 @@ export class NodePart {
     }
 
     let index = 0;
-    let before = this.afterNode ? this.afterNode.previousSibling : this.parentNode.lastChild;
+    let before = this.afterNode.previousSibling;
     let after;
     const parent = this.parentNode;
     for (const value of iterable) {
       let part = this.iterableParts[index];
       if (part === undefined) {
         after = document.createTextNode('');
-        this.parentNode.insertBefore(after, this.afterNode);
-        part = new NodePart({ before, after, parent });
+        parent.insertBefore(after, this.afterNode);
+        part = new NodePart();
+        part.beforeNode = before;
+        part.afterNode = after;
         this.iterableParts.push(part);
         before = after;
       }
@@ -154,10 +164,10 @@ export class NodePart {
       index++;
     }
     if (index === 0) {
-      moveNodes(this.parentNode, this.beforeNode, this.afterNode);
+      moveNodes(parent, this.beforeNode, this.afterNode);
     } else if (index < this.iterableParts.length) {
       const lastPart = this.iterableParts[index - 1];
-      moveNodes(this.parentNode, lastPart.afterNode, this.afterNode);
+      moveNodes(parent, lastPart.afterNode, this.afterNode);
     }
     this.iterableParts.length = index;
   }

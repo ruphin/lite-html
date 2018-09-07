@@ -55,8 +55,9 @@ export const render = (content, target) => {
   let part = nodeParts.get(target);
   if (!part) {
     // If it does not, create a new NodePart
-    part = new NodePart({ parent: target });
+    part = new NodePart();
     nodeParts.set(target, part);
+    part.afterNode = target.appendChild(document.createTextNode(''));
   }
   // Task the NodePart of this target to render the content
   part.render(content);

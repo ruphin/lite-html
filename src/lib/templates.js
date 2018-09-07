@@ -25,14 +25,13 @@
 
 import { findParts } from './node-walker.js';
 import { buildTemplate } from './template-parser.js';
-import { NodePart } from './parts.js';
 /**
  * A map that contains all the template literals we have seen before
  * It maps from a String array to a Template object
  *
  * @typedef {Map.<[String], Template>}
  */
-const templateMap = new Map();
+const templates = new Map();
 
 /**
  * Template holds the DocumentFragment that is to be used as a prototype for instances of this template
@@ -74,16 +73,15 @@ export class TemplateResult {
    *
    */
   get template() {
-    if (this._template) {
-      return this._template;
+    if (!this._template) {
+      let template = templates.get(this.strings);
+      if (!template) {
+        template = new Template(this.strings);
+        templates.set(this.strings, template);
+      }
+      this._template = template;
     }
-    let template = templateMap.get(this.strings);
-    if (!template) {
-      template = new Template(this.strings);
-      templateMap.set(this.strings, template);
-    }
-    this._template = template;
-    return template;
+    return this._template;
   }
 }
 
@@ -98,9 +96,9 @@ export class TemplateResult {
  *   The parts that render into this template instance
  */
 export class TemplateInstance {
-  constructor(template, parent, before, after) {
+  constructor(template) {
     this.template = template;
-    this.fragment = template.element.content.cloneNode(true);
+    this.fragment = document.importNode(template.element.content, true);
 
     // Create new Parts based on the part definitions set on the Template
     const parts = this.template.parts.map(part => {
@@ -109,15 +107,6 @@ export class TemplateInstance {
         node = node.childNodes[nodeIndex];
       });
       part.node = node;
-      if (part.type === NodePart) {
-        if (part.path.length === 1) {
-          part.parent = parent;
-          part.before = node.previousSibling || before;
-          part.after = node.nextSibling || after;
-        } else {
-          part.parent = node.parentNode;
-        }
-      }
       return part;
     });
     this.parts = parts.map(part => new part.type(part));

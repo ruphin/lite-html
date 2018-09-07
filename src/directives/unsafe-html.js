@@ -26,6 +26,7 @@
 import { directive } from '../lib/directive.js';
 
 const templates = {};
+const fragments = new WeakMap();
 
 export const unsafeHTML = htmlString =>
   directive(part => {
@@ -33,12 +34,11 @@ export const unsafeHTML = htmlString =>
     if (!template) {
       template = document.createElement('template');
       template.innerHTML = htmlString;
-      template.__templateKey = {};
       templates[htmlString] = template;
     }
-    if (!part.node || part.node.__templateKey !== template.__templateKey) {
-      const fragment = document.importNode(template.content, true);
-      fragment.__templateKey = template.__templateKey;
+    if (!part.node || fragments.get(part.node) !== template) {
+      const fragment = template.content.cloneNode(true);
+      fragments.set(fragment, template);
       part.render(fragment);
     }
   });
