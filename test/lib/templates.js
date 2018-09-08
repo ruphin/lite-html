@@ -47,14 +47,7 @@ describe('templates', () => {
 
     it(`holds a template`, () => {
       const templateResult = html``;
-      expect(templateResult.template instanceof Template).to.be.true;
-    });
-
-    it(`lazily loads the template`, () => {
-      const templateResult = html``;
-      expect(templateResult._template).to.be.undefined;
-      expect(templateResult.template instanceof Template).to.be.true;
-      expect(templateResult._template instanceof Template).to.be.true;
+      expect(templateResult.template() instanceof Template).to.be.true;
     });
 
     it(`returns the same template from different TemplateResults create with the same literal`, () => {
@@ -91,7 +84,7 @@ describe('templates', () => {
 
   describe('TemplateInstance', () => {
     it(`clones the template document fragment from the source Template`, () => {
-      const template = html`<div>${0}</div>`.template;
+      const template = html`<div>${0}</div>`.template();
       const instance = new TemplateInstance(template);
       expect(fragmentString(template.element.content)).to.equal(fragmentString(instance.fragment));
 
@@ -117,7 +110,7 @@ describe('templates', () => {
             <!-- ${8} -->
           <div>
         </div>
-        `.template;
+        `.template();
       const parent = document.createElement('div');
       parent.id = 'root';
       const instance = new TemplateInstance(template);
@@ -146,7 +139,7 @@ describe('templates', () => {
     });
 
     it(`calls 'render' on the parts with the correct values`, () => {
-      const template = html`${3}${3}${3}`.template;
+      const template = html`${3}${3}${3}`.template();
       const instance = new TemplateInstance(template);
       instance.parts.forEach(part => (part.render = value => (part.__renderCalledWith = value)));
       instance.render([0, 1, 2]);

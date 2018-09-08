@@ -25,13 +25,15 @@
 
 import { findParts } from './node-walker.js';
 import { buildTemplate } from './template-parser.js';
+import { CEPolyfill, ShadyPolyfill } from './polyfills.js';
 /**
  * A map that contains all the template literals we have seen before
  * It maps from a String array to a Template object
  *
  * @typedef {Map.<[String], Template>}
  */
-const templates = new Map();
+const templates = new WeakMap();
+const scopedTemplates = new Map();
 
 /**
  * Template holds the DocumentFragment that is to be used as a prototype for instances of this template
@@ -47,9 +49,13 @@ const templates = new Map();
  *   the attribute this part represents.
  */
 export class Template {
-  constructor(strings) {
+  constructor(strings, scope) {
     this.strings = strings;
     this.element = buildTemplate(strings);
+
+    if (ShadyPolyfill && scope) {
+      window.ShadyCSS.prepareTemplate(this.element, scope);
+    }
     this.parts = findParts(strings, this.element);
   }
 }
@@ -72,16 +78,21 @@ export class TemplateResult {
    *   Template object when they are the result of the same html`..` literal.
    *
    */
-  get template() {
-    if (!this._template) {
-      let template = templates.get(this.strings);
-      if (!template) {
-        template = new Template(this.strings);
-        templates.set(this.strings, template);
+  template(scope) {
+    let templateMap = templates;
+    let template;
+    if (scope) {
+      templateMap = scopedTemplates.get(scope);
+      if (!templateMap) {
+        templateMap = new WeakMap();
       }
-      this._template = template;
     }
-    return this._template;
+    template = templateMap.get(this.strings);
+    if (!template) {
+      template = new Template(this.strings, scope);
+      templateMap.set(this.strings, template);
+    }
+    return template;
   }
 }
 
@@ -98,7 +109,7 @@ export class TemplateResult {
 export class TemplateInstance {
   constructor(template) {
     this.template = template;
-    this.fragment = document.importNode(template.element.content, true);
+    this.fragment = CEPolyfill ? this.template.element.content.cloneNode(true) : document.importNode(this.template.element.content, true);
 
     // Create new Parts based on the part definitions set on the Template
     const parts = this.template.parts.map(part => {
@@ -109,6 +120,12 @@ export class TemplateInstance {
       part.node = node;
       return part;
     });
+
+    if (CEPolyfill) {
+      document.adoptNode(this.fragment);
+      customElements.upgrade(this.fragment);
+    }
+
     this.parts = parts.map(part => new part.type(part));
   }
 

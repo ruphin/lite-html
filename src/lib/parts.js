@@ -113,10 +113,11 @@ export class NodePart {
    */
   _renderTemplateResult(templateResult) {
     this.templateInstances = this.templateInstances || new Map();
-    let instance = this.templateInstances.get(templateResult.template);
+    const template = templateResult.template(this.scope);
+    let instance = this.templateInstances.get(template);
     if (!instance) {
-      instance = new TemplateInstance(templateResult.template, this.parentNode, this.beforeNode, this.afterNode);
-      this.templateInstances.set(templateResult.template, instance);
+      instance = new TemplateInstance(template);
+      this.templateInstances.set(template, instance);
     }
     if (this.node !== instance.fragment) {
       this.clear();
@@ -155,6 +156,9 @@ export class NodePart {
         after = document.createTextNode('');
         parent.insertBefore(after, this.afterNode);
         part = new NodePart();
+        if (this.scope) {
+          part.scope = this.scope;
+        }
         part.beforeNode = before;
         part.afterNode = after;
         this.iterableParts.push(part);

@@ -294,7 +294,7 @@ describe('parts', () => {
           const part = new NodePart({ node });
           const templateResult = html`<ul><li></li></ul>`;
           part._renderTemplateResult(templateResult);
-          const templateInstance = part.templateInstances.get(templateResult.template);
+          const templateInstance = part.templateInstances.get(templateResult.template());
           expect(fragmentString(templateInstance.fragment)).to.equal('');
           expect(parent.outerHTML).to.equal('<div><span></span><ul><li></li></ul><span></span></div>');
           part.clear();

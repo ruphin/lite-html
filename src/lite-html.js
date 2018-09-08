@@ -25,8 +25,8 @@
 
 import { TemplateResult } from './lib/templates.js';
 import { NodePart } from './lib/parts.js';
-
-export { noChange } from './lib/parts.js';
+import { ShadyPolyfill } from './lib/polyfills.js';
+import { moveNodes } from './lib/dom.js';
 
 // A lookup map for NodeParts that represent the content of a render target
 const nodeParts = new WeakMap();
@@ -50,13 +50,26 @@ export const html = (strings, ...values) => {
  *   An HTML Node that you wish to render the content into.
  *   The content will become the sole content of the target node.
  */
-export const render = (content, target) => {
+export const render = (content, target, scope) => {
   // Check if the target has a NodePart that represents its content
   let part = nodeParts.get(target);
   if (!part) {
     // If it does not, create a new NodePart
     part = new NodePart();
     nodeParts.set(target, part);
+
+    if (ShadyPolyfill) {
+      if (target instanceof ShadowRoot) {
+        const host = target.host;
+        window.ShadyCSS.styleElement(host);
+        part.scope = scope || host.nodeName.toLowerCase();
+      } else {
+        part.scope = scope;
+      }
+    }
+
+    // Remove all existing nodes from the target
+    moveNodes(target);
     part.afterNode = target.appendChild(document.createTextNode(''));
   }
   // Task the NodePart of this target to render the content
