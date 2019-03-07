@@ -23,74 +23,186 @@
  * SOFTWARE.
  */
 
-import { attributeMarker, commentMarker, nodeMarker } from './markers.js';
+const htmlStrings = s => s;
+const input = htmlStrings`
+<div>
+  <style type=${1}>
+    div {
+      color: ${'red'};
+      font-weight: ${'bold'};
+    }
+  </style>
+  <style>
+    /* <!-- ${1} --> */
+  </style>
+  Text <span thing attr = ${1}></span>
+  <div font="fine" color='"red ${1} blue ${1} yellow' name=bob hue='cyan${1}'> More ${1}Text</div>
+  ${1}<!-- Things${1} More things${1} --> After${1} <!----> Text
+</div>`;
 
-// The second marker is to add a boolean attribute to the element
-// This is to easily test if a node has dynamic attributes by checking against that attribute
-export const attributeMarkerTag = `${attributeMarker} ${attributeMarker}`;
+const NodePart = class NodePart {};
+const AttributePart = class AttributePart {};
+const StylePart = class StylePart {};
+const CommentPart = class CommentPart {};
 
-// The space at the end is necessary, to avoid accidentally closing comments with `<!-->`
-export const commentMarkerTag = `--><!--${commentMarker}--><!-- `;
+const marker = `$lit$`;
+const nodeMarker = `<!--${marker}-->`;
+const commentMarker = `-->${nodeMarker}<!--`;
 
-// The extra content at the end is to add a flag to an element when
-// a nodeMarkerTag is inserted as an attribute due to an attribute containing `>`
-export const nodeMarkerTag = `<!--${nodeMarker}-->`;
+const nodeRegex = /<[^\0-\x1F\x7F-\x9F "'>=/]+/;
 
-export const attributeContext = {};
-export const commentContext = {};
-export const nodeContext = {};
-export const unchangedContext = {};
+const lastAttributeNameRegex = /([ \x09\x0a\x0c\x0d])([^\0-\x1F\x7F-\x9F "'>=/]+)([ \x09\x0a\x0c\x0d]*=[ \x09\x0a\x0c\x0d]*(?:[^ \x09\x0a\x0c\x0d"'`<>=]*|"[^"]*|'[^']*))$/;
 
-const markers = new Map();
-markers.set(attributeContext, attributeMarkerTag);
-markers.set(commentContext, commentMarkerTag);
-markers.set(nodeContext, nodeMarkerTag);
+const nodeEscapeRegex = /([>'"])/;
+const closeCommentRegex = /-->/;
+const closeStyleRegex = /<\/style>/;
 
-export const parseContext = string => {
-  const openComment = string.lastIndexOf('<!--');
-  const closeComment = string.indexOf('-->', openComment + 1);
-  const commentClosed = closeComment > -1;
-  let context;
-  if (openComment > -1 && !commentClosed) {
-    context = commentContext;
-  } else {
-    const closeTag = string.lastIndexOf('>');
-    const openTag = string.indexOf('<', closeTag + 1);
-    if (openTag > -1) {
-      context = attributeContext;
+const output = [];
+const parts = [];
+let partIndex = -1;
+let count = 0;
+
+const nodeContext = string => {
+  const match = string.match(nodeRegex);
+  if (match) {
+    output.push(string.slice(0, match.index));
+    string = string.slice(match.index);
+    if (string.slice(0, 4) === `<!--`) {
+      context = commentContext;
     } else {
-      if (closeTag > -1) {
-        context = nodeContext;
+      context = attributeContext;
+      if (string.slice(0, 6) === `<style`) {
+        nextContext = styleContext;
       } else {
-        context = unchangedContext;
+        nextContext = nodeContext;
       }
     }
+    return string;
+  } else {
+    output.push(string, nodeMarker);
+    parts.push({ part: NodePart, index: ++partIndex });
+    return '';
   }
-  return { commentClosed, context };
 };
 
-export const parseTemplate = strings => {
-  const html = [];
-  const lastStringIndex = strings.length - 1;
-  let currentContext = nodeContext;
-  for (let i = 0; i < lastStringIndex; i++) {
-    const string = strings[i];
-    const { commentClosed, context } = parseContext(string);
-    if ((currentContext !== commentContext || commentClosed) && context !== unchangedContext) {
-      currentContext = context;
-    }
-    if (currentContext === attributeContext && string.slice(-1) !== '=') {
-      throw new Error('Only bare attribute parts are allowed: `<div a=${0}>`');
-    }
-    html.push(string + markers.get(currentContext));
+const commentContext = string => {
+  const match = string.match(closeCommentRegex);
+  if (match) {
+    output.push(string.slice(0, match.index + 3));
+    context = nodeContext;
+    return string.slice(match.index + 3);
+  } else {
+    parts.push({ part: CommentPart, index: ++partIndex });
+    output.push(string, commentMarker);
+    return '';
   }
-
-  html.push(strings[lastStringIndex]);
-  return html.join('');
 };
 
-export const buildTemplate = strings => {
-  const template = document.createElement('template');
-  template.innerHTML = parseTemplate(strings);
-  return template;
+let styleHasBinding = false;
+const styleContext = string => {
+  const match = string.match(closeStyleRegex);
+  if (match) {
+    output.push(string.slice(0, match.index + 8));
+    if (styleHasBinding) {
+      parts[parts.length - 1].after = string;
+      output.push(nodeMarker);
+      styleHasBinding = false;
+    }
+    context = nodeContext;
+    return string.slice(match.index + 8);
+  } else {
+    if (!styleHasBinding) {
+      partIndex++;
+      styleHasBinding = true;
+    }
+    parts.push({ part: StylePart, index: partIndex, before: string });
+    output.push(string, marker);
+    return '';
+  }
 };
+
+let nodeString = [];
+let nodeHasBinding = false;
+let attributeDelimiter;
+const attributeContext = string => {
+  let match = string.match(nodeEscapeRegex);
+  if (match) {
+    if (match[1] === `>`) {
+      if (nodeHasBinding) {
+        output.push(nodeMarker);
+        nodeHasBinding = false;
+      }
+      context = nextContext;
+      output.push(nodeString.join(''), string.slice(0, match.index + 1));
+      nodeString = [];
+      return string.slice(match.index + 1);
+    } else {
+      attributeDelimiter = match[1];
+      context = attributeStringContext;
+      nodeString.push(string.slice(0, match.index + 1));
+      return string.slice(match.index + 1);
+    }
+  } else {
+    // Bare attribute
+    if (!nodeHasBinding) {
+      partIndex++;
+      nodeHasBinding = true;
+    }
+    match = string.match(lastAttributeNameRegex);
+    parts.push({ part: AttributePart, index: partIndex, attribute: match[2] });
+    nodeString.push(string.slice(0, match.index));
+    return '';
+  }
+};
+
+let attributeHasBinding = false;
+const attributeStringContext = string => {
+  const index = string.indexOf(attributeDelimiter);
+  if (index >= 0) {
+    if (attributeHasBinding === true) {
+      parts[parts.length - 1].after = string.slice(0, index);
+    } else {
+      nodeString.push(string.slice(0, index + 1));
+    }
+    attributeHasBinding = false;
+    context = attributeContext;
+    return string.slice(index + 1);
+  } else {
+    if (attributeHasBinding) {
+      parts.push({ type: attributeContext, index: partIndex, attribute: parts[parts.length - 1].attribute, before: string });
+    } else {
+      let match = nodeString[nodeString.length - 1].match(lastAttributeNameRegex);
+      nodeString[nodeString.length - 1] = nodeString[nodeString.length - 1].slice(0, match.index);
+      if (!nodeHasBinding) {
+        partIndex++;
+        nodeHasBinding = true;
+      }
+      parts.push({ type: attributeContext, index: partIndex, attribute: match[2], before: string });
+      attributeHasBinding = true;
+    }
+    return '';
+  }
+};
+
+let context = nodeContext;
+let nextContext;
+
+const endIndex = input.length - 1;
+for (let i = 0; i < endIndex; i++) {
+  let string = input[i];
+  do {
+    string = context(string);
+  } while (string.length > 0);
+}
+
+output.push(input[endIndex]);
+
+const template = document.createElement('template');
+template.innerHTML = output.join('');
+
+const fragment = template.content.cloneNode(true);
+
+const walker = document.createTreeWalker(fragment, 128 /* NodeFilter.SHOW_COMMENT */, null, false);
+
+document.getElementById('tree').innerText = output.join('');
+console.log(parts);
