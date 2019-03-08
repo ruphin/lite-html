@@ -23,7 +23,7 @@
  * SOFTWARE.
  */
 
-import { TemplateResult, TemplateInstance } from './templates.js';
+// import { TemplateResult, TemplateInstance } from './templates.js';
 import { moveNodes } from './dom.js';
 import { isDirective } from './directive.js';
 
@@ -215,9 +215,22 @@ export class CommentPart {
   }
 }
 
+// TODO: multi-part style parts
+export class StylePart {
+  constructor({ node, before, after }) {
+    this.node = node.previousSibling;
+    this.before = before || '';
+    this.after = after || '';
+  }
+  render(value) {
+    this.node.textContent = `${this.before}${value}${this.after}`;
+  }
+}
+
+// TODO: multi-part attribute parts
 export class AttributePart {
   constructor({ node, attribute }) {
-    this.node = node;
+    this.node = node.nextSibling;
     switch (attribute[0]) {
       case '.':
         this._render = this._renderProperty;
