@@ -27,7 +27,7 @@
 import { moveNodes } from './dom.js';
 import { isDirective } from './directive.js';
 
-export const isSerializable = value => typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+export const isPrimitive = value => value === null || !(typeof value === 'object' || typeof value === 'function');
 export const isIterable = nonPrimitive => Array.isArray(nonPrimitive) || nonPrimitive[Symbol.iterator];
 
 // A flag that signals that no render should happen
@@ -43,40 +43,47 @@ export class NodePart {
   // node OR parent _must_ be defined
   // If a node is defined, this NodePart represents the position of that node in the tree
   // If a only a parent is defined, this NodePart represents the content of the parent
-  constructor({ node, parent, before, after }) {
-    this.node = node || emptyNode;
+  constructor({ node }) {
+    this.node = emptyNode;
     this.value = noChange;
 
-    this.parentNode = parent || (node && node.parentNode);
-    this.beforeNode = before || (node && node.previousSibling);
-    this.afterNode = after || (node && node.nextSibling);
+    this.beforeNode = node;
+    this.afterNode = node.nextSibling;
+    this.parentNode = node.parentNode;
   }
 
-  render(value) {
-    if (isDirective(value)) {
-      value(this);
-    } else if (value !== noChange) {
-      if (value == null) {
-        this.clear();
-      } else if (isSerializable(value)) {
-        this._renderText(value);
-      } else if (value instanceof TemplateResult) {
-        this._renderTemplateResult(value);
-      } else if (isIterable(value)) {
-        this._renderIterable(value);
-      } else if (value instanceof Node) {
-        this._renderNode(value);
-      } else if (value.then !== undefined) {
-        this._renderPromise(value);
-        // Return here because we do not want to set `this.value` with the promise
-        return;
-      } else {
-        value = String(value);
+  setValue(value) {
+    this._pendingValue = value;
+  }
+
+  commit() {
+    while (isDirective(this._pendingValue)) {
+      const directive = this._pendingValue;
+      this._pendingValue = noChange;
+      directive(this);
+    }
+    const value = this._pendingValue;
+    if (value === noChange) {
+      return;
+    }
+    if (isPrimitive(value)) {
+      if (value !== this.value) {
         this._renderText(value);
       }
-      this.promise = undefined;
+    } else if (value instanceof TemplateResult) {
+      this._renderTemplateResult(value);
+    } else if (isIterable(value)) {
+      this._renderIterable(value);
+    } else if (value instanceof Node) {
+      this._renderNode(value);
+    } else if (value === nothing) {
       this.value = value;
+      this.clear();
+    } else {
+      // Fallback, will render the string representation
+      this._renderText(String(value));
     }
+    this.value = value;
   }
 
   /**
@@ -175,23 +182,6 @@ export class NodePart {
   }
 
   /**
-   * Render the result of a promise in this part
-   */
-  _renderPromise(promise) {
-    if (this.promise !== promise) {
-      this.promise = promise;
-      // When the promise resolves, render the result of that promise
-      promise.then(value => {
-        // Render the promise result only if the last rendered value was the promise
-        if (this.promise === promise) {
-          this.promise = undefined;
-          this.render(value);
-        }
-      });
-    }
-  }
-
-  /**
    * Clear out the content of this NodePart
    *
    * If the current node is part of a DocumentFragment (this NodePart rendered a TemplateResult)
@@ -204,80 +194,186 @@ export class NodePart {
   }
 }
 
-// The node in the CommentPart constructor must be a CommentNode
-export class CommentPart {
-  constructor({ node }) {
+export class CommentCommitter {
+  constructor({ node, strings }) {
     this.node = node;
+    this.strings = strings;
+    this.parts = [];
+    for (let i = 0; i < strings.length - 1; i++) {
+      this.parts[i] = new CommentPart(this);
+    }
   }
 
-  render(value) {
-    this.node.textContent = value;
+  commit() {
+    const result = [];
+    for (let i = 0; i < this.parts.length; i++) {
+      result.push(this.strings[i]);
+      result.push(this.parts[i].value);
+    }
+    result.push(this.strings[this.parts.length]);
+    this.node.textContent = result.join('');
   }
 }
 
-// TODO: multi-part style parts
-export class StylePart {
-  constructor({ node, before, after }) {
-    this.node = node.previousSibling;
-    this.before = before || '';
-    this.after = after || '';
+// The node in the CommentPart constructor must be a CommentNode
+export class CommentPart {
+  constructor(committer) {
+    this.committer = committer;
   }
-  render(value) {
-    this.node.textContent = `${this.before}${value}${this.after}`;
+
+  setValue(value) {
+    if (value !== noChange && (!isPrimitive(value) || value !== this.value)) {
+      if (isDirective(value)) {
+        value(this);
+      } else {
+        this.value = value;
+        this.committer.dirty = true;
+      }
+    }
+  }
+
+  commit() {
+    this.committer.commit();
+  }
+}
+
+export class StyleCommitter {
+  constructor({ node, strings }) {
+    this.node = node.previousSibling;
+    this.strings = strings;
+    this.parts = [];
+    for (let i = 0; i < strings.length - 1; i++) {
+      this.parts[i] = new StylePart(this);
+    }
+  }
+
+  commit() {
+    if (this.dirty) {
+      this.dirty = false;
+      const result = [];
+      for (let i = 0; i < this.parts.length; i++) {
+        result.push(this.strings[i]);
+        result.push(this.parts[i].value);
+      }
+      result.push(this.strings[this.parts.length]);
+      this.node.textContent = result.join('');
+    }
+  }
+}
+
+export class StylePart {
+  constructor(committer) {
+    this.committer = committer;
+  }
+
+  setValue(value) {
+    if (value !== noChange && (!isPrimitive(value) || value !== this.value)) {
+      if (isDirective(value)) {
+        value(this);
+      } else {
+        this.value = value;
+        this.committer.dirty = true;
+      }
+    }
+  }
+
+  commit() {
+    this.committer.commit();
+  }
+}
+
+export class AttributeCommitter {
+  constructor({ node, name, strings }) {
+    this.node = node.nextSibling;
+    this.name = name;
+    this.strings = strings;
+    this.parts = [];
+    for (let i = 0; i < strings.length - 1; i++) {
+      this.parts[i] = new AttributePart(this);
+    }
+  }
+
+  commit() {
+    const result = [];
+    for (let i = 0; i < this.parts.length; i++) {
+      result.push(this.strings[i]);
+      result.push(this.parts[i].value);
+    }
+    result.push(this.strings[this.parts.length]);
+    this.node.setAttribute(this.name, result.join(''));
   }
 }
 
 // TODO: multi-part attribute parts
 export class AttributePart {
-  constructor({ node, attribute }) {
-    this.node = node.nextSibling;
-    switch (attribute[0]) {
-      case '.':
-        this._render = this._renderProperty;
-      case '?':
-        this._render = this._render || this._renderBoolean;
-      case '@':
-        this._render = this._render || this._renderEvent;
-        this.node.removeAttribute(attribute);
-        this.name = attribute.slice(1);
-        break;
-      default:
-        this._render = this._renderAttribute;
-        this.name = attribute;
+  constructor(committer) {
+    this.committer = committer;
+  }
+
+  setValue(value) {
+    if (value !== noChange && (!isPrimitive(value) || value !== this.value)) {
+      if (isDirective(value)) {
+        value(this);
+      } else {
+        this.value = value;
+        this.committer.dirty = true;
+      }
     }
   }
 
-  render(value) {
-    if (isDirective(value)) {
-      value(this);
-    } else if (value !== noChange) {
-      this._render(value);
-    }
+  commit() {
+    this.committer.commit();
   }
 
-  _renderProperty(value) {
-    this.node[this.name] = value;
-  }
+  // constructor({ node, attribute }) {
+  //   this.node = node.nextSibling;
+  //   switch (attribute[0]) {
+  //     case '.':
+  //       this._render = this._renderProperty;
+  //     case '?':
+  //       this._render = this._render || this._renderBoolean;
+  //     case '@':
+  //       this._render = this._render || this._renderEvent;
+  //       this.node.removeAttribute(attribute);
+  //       this.name = attribute.slice(1);
+  //       break;
+  //     default:
+  //       this._render = this._renderAttribute;
+  //       this.name = attribute;
+  //   }
+  // }
 
-  _renderBoolean(boolean) {
-    if (this.value !== !!boolean) {
-      boolean ? this.node.setAttribute(this.name, '') : this.node.removeAttribute(this.name);
-      this.value = !!boolean;
-    }
-  }
+  // render(value) {
+  //   if (isDirective(value)) {
+  //     value(this);
+  //   } else if (value !== noChange) {
+  //     this._render(value);
+  //   }
+  // }
 
-  _renderEvent(listener) {
-    if (this.value !== listener) {
-      this.node.removeEventListener(this.name, this.value);
-      this.node.addEventListener(this.name, listener);
-      this.value = listener;
-    }
-  }
+  // _renderProperty(value) {
+  //   this.node[this.name] = value;
+  // }
 
-  _renderAttribute(string) {
-    if (this.value !== string) {
-      this.node.setAttribute(this.name, string);
-      this.value = string;
-    }
-  }
+  // _renderBoolean(boolean) {
+  //   if (this.value !== !!boolean) {
+  //     boolean ? this.node.setAttribute(this.name, '') : this.node.removeAttribute(this.name);
+  //     this.value = !!boolean;
+  //   }
+  // }
+
+  // _renderEvent(listener) {
+  //   if (this.value !== listener) {
+  //     this.node.removeEventListener(this.name, this.value);
+  //     this.node.addEventListener(this.name, listener);
+  //     this.value = listener;
+  //   }
+  // }
+
+  // _renderAttribute(string) {
+  //   if (this.value !== string) {
+  //     this.node.setAttribute(this.name, string);
+  //     this.value = string;
+  //   }
+  // }
 }
