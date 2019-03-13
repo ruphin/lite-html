@@ -28,7 +28,7 @@ import { moveNodes } from './dom.js';
 import { isDirective } from './directive.js';
 
 export const isPrimitive = value => value === null || !(typeof value === 'object' || typeof value === 'function');
-export const isIterable = nonPrimitive => Array.isArray(nonPrimitive) || nonPrimitive[Symbol.iterator];
+export const isIterable = nonPrimitive => Array.isArray(nonPrimitive) || !!onPrimitive[Symbol.iterator];
 
 // A flag that signals that no render should happen
 export const noChange = {};
@@ -288,19 +288,28 @@ export class AttributeCommitter {
     this.name = name;
     this.strings = strings;
     this.parts = [];
-    for (let i = 0; i < strings.length - 1; i++) {
-      this.parts[i] = new AttributePart(this);
+    if (strings) {
+      for (let i = 0; i < strings.length - 1; i++) {
+        this.parts[i] = new AttributePart(this);
+      }
+    } else {
+      this.parts.push(new AttributePart(this));
     }
   }
 
   commit() {
-    const result = [];
-    for (let i = 0; i < this.parts.length; i++) {
-      result.push(this.strings[i]);
-      result.push(this.parts[i].value);
+    let result;
+    if (this.strings) {
+      result = '';
+      for (let i = 0; i < this.parts.length; i++) {
+        result += this.strings[i];
+        result += this.parts[i].value;
+      }
+      result += this.strings[this.parts.length];
+    } else {
+      result = this.parts[0].value;
     }
-    result.push(this.strings[this.parts.length]);
-    this.node.setAttribute(this.name, result.join(''));
+    this.node.setAttribute(this.name, result);
   }
 }
 

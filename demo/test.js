@@ -2,31 +2,42 @@ import { parseStrings } from '../src/lib/template-parser.js';
 import { marker } from '../src/lib/markers.js';
 
 const html = s => s;
+const input = html`
+  <div>
+    <style attr=${1}>
+      div {
+        color: ${'red'};
+        font-weight: ${'bold'};
+      }
+    </style>
+    <style>
+      /* <!-- ${1} --> */
+    </style>
+    Text <span thing attr=${1}></span>
+    <div font="fine" color='"red ${1} blue ${1} yellow' name="bob" hue="cyan${1}">More ${1}Text</div>
+    ${1}<!-- Things${1} More things${1} -->
+    After${1}
+    <!---->
+    Text
+  </div>
+`;
+
 // const input = html`
-// <div>
-//   <style type=${1}>
+//   <!-- This is a comment --><style bare=${1} test="${1} e ${1}">
 //     div {
-//       color: ${'red'};
-//       font-weight: ${'bold'};
+//       margin: ${'red'};
 //     }
 //   </style>
-//   <style>
-//     /* <!-- ${1} --> */
-//   </style>
-//   Text <span thing attr = ${1}></span>
-//   <div font="fine" color='"red ${1} blue ${1} yellow' name=bob hue='cyan${1}'> More ${1}Text</div>
-//   ${1}<!-- Things${1} More things${1} --> After${1} <!----> Text
-// </div>`;
+//   <div><!---->${1}</div>
+// `;
 
-const input = html`<style test="${1} e ${1}"> div { color: ${ 'red' }; }</style>${1}`;
+let { htmlString, parts } = parseStrings(input);
 
-let { output, parts } = parseStrings(input);
-
-document.getElementById('container').innerText = output.join('');
+document.getElementById('container').innerText = htmlString;
 console.log(parts);
 
 const template = document.createElement('template');
-template.innerHTML = output.join('');
+template.innerHTML = htmlString;
 console.log(template);
 
 const printFragment = template.content.cloneNode(true);
@@ -45,13 +56,13 @@ parts.forEach(partList => {
   }
   partList.forEach(part => {
     let parts;
-    console.log("DESCRIPTION", part)
+    console.log('DESCRIPTION', part);
     if (part.committer) {
       parts = new part.committer({ node: commentNode, ...part }).parts;
     } else {
-      parts = [new part.part({ node: commentNode, ...part })]
+      parts = [new part.part({ node: commentNode, ...part })];
     }
-    console.log("PARTS", parts)
+    console.log('PARTS', parts);
     parts.forEach((part, index) => {
       part.setValue(index);
     });

@@ -25,7 +25,7 @@
 
 import { AttributeCommitter, CommentCommitter, NodePart, StyleCommitter } from './parts.js';
 
-import { marker, nodeMarker, commentMarker } from './markers.js';
+import { nodeMarker } from './markers.js';
 
 const tagRegex = /<[^\0-\x1F\x7F-\x9F "'>=/]+(>)?/;
 
@@ -33,117 +33,115 @@ const lastAttributeNameRegex = /[ \x09\x0a\x0c\x0d]([^\0-\x1F\x7F-\x9F "'>=/]+)[
 
 const nodeEscapeRegex = /([>'"])/;
 const closeCommentRegex = /-->/;
+// Note: This strictly only allows the literal `</style>` to close style tags
 const closeStyleRegex = /<\/style>/;
 
-let output;
+let htmlString;
 let parts;
-let commentPart;
-let stylePart;
-let attributePart;
+let currentPart;
 let tagString;
 let tagHasBinding;
 let parse;
+let parseContext;
 
 const parseText = string => {
-  console.log(`PARSING TEXT | ${string} |`);
   const match = string.match(tagRegex);
   if (match) {
     // Skip parsing tags if the tag is immediately closed;
     if (match[1]) {
-      output.push(string.slice(0, match.index), match[0]);
-      string = string.slice(match[0].length);
+      htmlString += string.slice(0, match.index) + match[0];
+      string = string.slice(match[0].length + match.index);
       if (match[0] === '<style>') {
         parse = parseStyle;
       } else {
         parse = parseText;
       }
     } else {
-      output.push(string.slice(0, match.index));
+      htmlString += string.slice(0, match.index);
       string = string.slice(match.index);
       if (string.slice(0, 4) === `<!--`) {
         parse = parseComment;
-      } else  if (string.slice(0, 6) === `<style`) {
-        parse = parseTag(parseStyle);
       } else {
-        parse = parseTag(parseText);
+        parse = parseTag;
+        if (string.slice(0, 6) === `<style`) {
+          parseContext = parseStyle;
+        } else {
+          parseContext = parseText;
+        }
       }
     }
     return string;
   } else {
-    output.push(string, nodeMarker);
+    htmlString += string + nodeMarker;
     parts.push([{ part: NodePart }]);
     parse = parseText;
-    return '';
+    return;
   }
 };
 
 const parseComment = string => {
-  console.log(`PARSING COMMENT | ${string} |`);
   const match = string.match(closeCommentRegex);
   if (match) {
-    if (commentPart) {
-      output.push(nodeMarker);
-      commentPart.strings.push(string.slice(0, match.index));
-      commentPart = undefined;
+    const commentEnd = match.index + 3;
+    if (currentPart) {
+      htmlString += nodeMarker;
+      currentPart.strings.push(string.slice(0, match.index));
+      currentPart = undefined;
     } else {
-      output.push('<!--', string.slice(0, match.index + 3));
+      htmlString += string.slice(0, commentEnd);
     }
-    console.log("STRING", string.slice(match.index + 3))
-    return parseText(string.slice(match.index + 3));
+    return parseText(string.slice(commentEnd));
   } else {
-    if (!commentPart) {
-      commentPart = { committer: CommentCommitter, strings: [] };
-      parts.push([commentPart]);
+    if (!currentPart) {
+      currentPart = { committer: CommentCommitter, strings: [] };
+      parts.push([currentPart]);
+      string = string.slice(4);
     }
-    commentPart.strings.push(string);
-    return '';
+    currentPart.strings.push(string);
+    return;
   }
 };
 
 const parseStyle = string => {
-  console.log(`PARSING STYLE | ${string} |`);
   const match = string.match(closeStyleRegex);
   if (match) {
-    if (stylePart) {
-      output.push('</style>', nodeMarker);
-      stylePart.strings.push(string.slice(0, match.index));
-      console.log("CLOSED STYLE PARSE")
-      stylePart = undefined;
+    const styleEnd = match.index + 8;
+    if (currentPart) {
+      htmlString += '</style>' + nodeMarker;
+      currentPart.strings.push(string.slice(0, match.index));
+      currentPart = undefined;
       parse = parseText;
     } else {
-      console.log("CLOSED STYLE PARSE2")
-      output.push(string.slice(0, match.index + 8));
+      htmlString += string.slice(0, styleEnd);
     }
-    return parseText(string.slice(match.index + 8));
+    parse = parseText;
+    return string.slice(styleEnd);
   } else {
-    console.log(parse)
-    console.log("CLOSED STYLE PARSE3")
-    if (!stylePart) {
-      stylePart = { committer: StyleCommitter, strings: [] };
-      parts.push([stylePart]);
+    if (!currentPart) {
+      currentPart = { committer: StyleCommitter, strings: [] };
+      parts.push([currentPart]);
     }
-    stylePart.strings.push(string);
+    currentPart.strings.push(string);
     // output.push(string, marker);
-    return '';
+    return;
   }
 };
 
-const parseTag = context => string => {
-  console.log(`PARSING TAG | ${string} |`);
+const parseTag = string => {
   let match = string.match(nodeEscapeRegex);
   if (match) {
     if (match[1] === `>`) {
       if (tagHasBinding) {
-        output.push(nodeMarker);
+        htmlString += nodeMarker;
         tagHasBinding = false;
       }
-      output.push(...tagString, string.slice(0, match.index + 1));
-      tagString = [];
-      parse = context;
-      return context(string.slice(match.index + 1));
+      htmlString += tagString + string.slice(0, match.index + 1);
+      tagString = '';
+      parse = parseContext;
+      return string.slice(match.index + 1);
     } else {
-      parse = parseAttribute(context, match[1]);
-      tagString.push(string.slice(0, match.index + 1));
+      parse = parseAttribute(match[1]);
+      tagString += string.slice(0, match.index + 1);
       return string.slice(match.index + 1);
     }
   } else {
@@ -152,47 +150,45 @@ const parseTag = context => string => {
       parts.push([]);
       tagHasBinding = true;
     }
-    console.log("ATTRIBUTE STRING", string)
     match = string.match(lastAttributeNameRegex);
-    parts[parts.length - 1].push({ part: AttributePart, attribute: match[1] });
-    tagString.push(string.slice(0, match.index));
-    return '';
+    parts[parts.length - 1].push({ committer: AttributeCommitter, name: match[1] });
+    tagString += string.slice(0, match.index);
+    return;
   }
 };
 
-const parseAttribute = (context, delimiter) => string => {
-  console.log(`PARSING ATTRIBUTE | ${string} |`);
+const parseAttribute = delimiter => string => {
   const index = string.indexOf(delimiter);
   if (index >= 0) {
-    if (attributePart) {
-      attributePart.strings.push(string.slice(0, index));
+    if (currentPart) {
+      currentPart.strings.push(string.slice(0, index));
     } else {
-      tagString.push(string.slice(0, index + 1));
+      tagString += string.slice(0, index + 1);
     }
-    attributePart = undefined;
-    parse = parseTag(context);
+    currentPart = undefined;
+    parse = parseTag;
     return string.slice(index + 1);
   } else {
-    if (attributePart) {
-      attributePart.strings.push(string);
+    if (currentPart) {
+      currentPart.strings.push(string);
     } else {
-      let match = tagString[tagString.length - 1].match(lastAttributeNameRegex);
-      tagString[tagString.length - 1] = tagString[tagString.length - 1].slice(0, match.index);
+      const match = tagString.match(lastAttributeNameRegex);
+      tagString = tagString.slice(0, match.index);
       if (!tagHasBinding) {
         parts.push([]);
         tagHasBinding = true;
       }
-      attributePart = { committer: AttributeCommitter, name: match[1], strings: [string] };
-      parts[parts.length - 1].push(attributePart);
+      currentPart = { committer: AttributeCommitter, name: match[1], strings: [string] };
+      parts[parts.length - 1].push(currentPart);
     }
-    return '';
+    return;
   }
 };
 
 export const parseStrings = strings => {
-  output = [];
+  htmlString = '';
+  tagString = '';
   parts = [];
-  tagString = [];
   tagHasBinding = false;
   parse = parseText;
 
@@ -202,13 +198,13 @@ export const parseStrings = strings => {
     string = strings[i];
     do {
       string = parse(string);
-    } while (string.length > 0);
+    } while (string !== undefined); // Important, we must continue when string === ''
   }
   // Only parse the last string until we hit text context;
   string = strings[lastString];
   while (parse !== parseText) {
     string = parse(string);
   }
-  output.push(string);
-  return { output, parts };
+  htmlString += string;
+  return { htmlString, parts };
 };

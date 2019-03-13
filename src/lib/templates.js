@@ -94,7 +94,7 @@ export class TemplateResult {
  *   The unique Template object that this is an instance of
  * @prop {[DocumentFragment]} fragment
  *   The DocumentFragment that is a clone of the Template's prototype DocumentFragment
- * @prop {[AttributePart|CommentPart|NodePart|]} parts
+ * @prop {[AttributePart|CommentPart|NodePart]} parts
  *   The parts that render into this template instance
  */
 export class TemplateInstance {

@@ -28,4 +28,3 @@ export const marker = Math.random()
   .slice(2)
   .padStart(10, '0');
 export const nodeMarker = `<!--${marker}-->`;
-export const commentMarker = `-->${nodeMarker}<!--`;
