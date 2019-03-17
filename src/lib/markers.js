@@ -27,4 +27,6 @@ export const marker = Math.random()
   .toString(36)
   .slice(2)
   .padStart(10, '0');
+export const templateMarker = `T${marker}`;
 export const nodeMarker = `<!--${marker}-->`;
+export const templateMarkerNode = `<!--${templateMarker}-->`;

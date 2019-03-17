@@ -23,9 +23,11 @@
  * SOFTWARE.
  */
 
-import { findParts } from './node-walker.js';
-import { buildTemplate } from './template-parser.js';
-import { NodePart } from './parts.js';
+// import { findParts } from './node-walker.js';
+import { parseStrings } from './template-parser.js';
+// import { NodePart } from './parts.js';
+import { moveNodes } from './dom.js';
+import { prepareTemplate } from './template-walker.js';
 /**
  * A map that contains all the template literals we have seen before
  * It maps from a String array to a Template object
@@ -48,10 +50,27 @@ const templateMap = new Map();
  *   the attribute this part represents.
  */
 export class Template {
-  constructor(strings) {
-    this.strings = strings;
-    this.element = buildTemplate(strings);
-    this.parts = findParts(strings, this.element);
+  constructor(strings, isSVG) {
+    const { html, parts } = parseStrings(strings);
+    this.element = document.createElement('template');
+    this.parts = parts;
+    if (isSVG) {
+      this.element.innerHTML = `<svg>${html}</svg>`;
+      const content = this.element.content;
+      const svgElement = content.firstChild;
+      content.removeChild(svgElement);
+      moveNodes(svgElement, null, null, content);
+    } else {
+      this.element.innerHTML = html;
+    }
+    console.log('PARSED', html);
+    prepareTemplate(this.element, this.parts);
+
+    const printFragment = this.element.content.cloneNode(true);
+    const printNode = document.createElement('div');
+    printNode.appendChild(printFragment);
+    console.log('PREPARED', printNode.innerHTML);
+    console.log('PARTS', this.parts);
   }
 }
 
@@ -63,7 +82,6 @@ export class TemplateResult {
   constructor(strings, values) {
     this.strings = strings;
     this.values = values;
-    this._template = undefined;
   }
 
   /**
@@ -74,16 +92,21 @@ export class TemplateResult {
    *
    */
   get template() {
-    if (this._template) {
-      return this._template;
-    }
     let template = templateMap.get(this.strings);
     if (!template) {
-      template = new Template(this.strings);
+      template = this.newTemplate();
       templateMap.set(this.strings, template);
     }
-    this._template = template;
     return template;
+  }
+  newTemplate() {
+    return new Template(this.strings);
+  }
+}
+
+export class SVGTemplateResult extends TemplateResult {
+  newTemplate() {
+    return new Template(this.strings, true);
   }
 }
 

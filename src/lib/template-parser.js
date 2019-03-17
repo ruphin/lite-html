@@ -23,11 +23,11 @@
  * SOFTWARE.
  */
 
-import { AttributeCommitter, CommentCommitter, NodePart, StyleCommitter } from './parts.js';
+// import { AttributeCommitter, CommentCommitter, NodePart, StyleCommitter } from './parts.js';
 
-import { nodeMarker } from './markers.js';
+import { nodeMarker, templateMarkerNode } from './markers.js';
 
-const tagRegex = /<[^\0-\x1F\x7F-\x9F "'>=/]+(>)?/;
+const tagRegex = /<[^\0-\x1F\x7F-\x9F "'>=/]+/;
 
 const lastAttributeNameRegex = /[ \x09\x0a\x0c\x0d]([^\0-\x1F\x7F-\x9F "'>=/]+)[ \x09\x0a\x0c\x0d]*=[ \x09\x0a\x0c\x0d"']*$/;
 
@@ -36,175 +36,181 @@ const closeCommentRegex = /-->/;
 // Note: This strictly only allows the literal `</style>` to close style tags
 const closeStyleRegex = /<\/style>/;
 
-let htmlString;
+let html;
 let parts;
 let currentPart;
+let currentAttr;
 let tagString;
-let tagHasBinding;
 let parse;
 let parseContext;
-
-const parseText = string => {
-  const match = string.match(tagRegex);
+let attributeDelimiter;
+/**
+ * Parses a string that is in a free text context.
+ * It consumes tokens from the input string until the context enters another
+ * context (tag, comment, style). If the end of the string is reached, it
+ * inserts a marker for a dynamic text part. Returns the remainder of the string
+ * after all text tokens have been consumed.
+ */
+const parseText = htmlString => {
+  const match = htmlString.match(tagRegex);
   if (match) {
-    // Skip parsing tags if the tag is immediately closed;
-    if (match[1]) {
-      htmlString += string.slice(0, match.index) + match[0];
-      string = string.slice(match[0].length + match.index);
-      if (match[0] === '<style>') {
-        parse = parseStyle;
-      } else {
-        parse = parseText;
-      }
+    html += htmlString.slice(0, match.index);
+    htmlString = htmlString.slice(match.index);
+    if (htmlString.slice(0, 4) === '<!--') {
+      parse = parseComment;
     } else {
-      htmlString += string.slice(0, match.index);
-      string = string.slice(match.index);
-      if (string.slice(0, 4) === `<!--`) {
-        parse = parseComment;
+      parse = parseTag;
+      if (htmlString.slice(0, 6) === '<style') {
+        parseContext = parseStyle;
       } else {
-        parse = parseTag;
-        if (string.slice(0, 6) === `<style`) {
-          parseContext = parseStyle;
-        } else {
-          parseContext = parseText;
+        if (htmlString.slice(0, 9) === '<template') {
+          html += templateMarkerNode;
         }
+        parseContext = parseText;
       }
     }
-    return string;
+    return htmlString;
   } else {
-    htmlString += string + nodeMarker;
-    parts.push([{ part: NodePart }]);
+    html += htmlString + nodeMarker;
+    parts.push({ type: 'node' });
     parse = parseText;
     return;
   }
 };
-
-const parseComment = string => {
-  const match = string.match(closeCommentRegex);
+/**
+ * Parses a string that is in a comment context.
+ * It consumes tokens from the input string until the comment closes and returns
+ * to a text context. If the end of the string is reached, it inserts a marker
+ * for a dynamic comment part.
+ */
+const parseComment = htmlString => {
+  const match = htmlString.match(closeCommentRegex);
   if (match) {
     const commentEnd = match.index + 3;
     if (currentPart) {
-      htmlString += nodeMarker;
-      currentPart.strings.push(string.slice(0, match.index));
+      html += nodeMarker;
+      currentPart.strings.push(htmlString.slice(0, match.index));
+      parts.push(currentPart);
       currentPart = undefined;
     } else {
-      htmlString += string.slice(0, commentEnd);
+      html += htmlString.slice(0, commentEnd);
     }
-    return parseText(string.slice(commentEnd));
+    return parseText(htmlString.slice(commentEnd));
   } else {
     if (!currentPart) {
-      currentPart = { committer: CommentCommitter, strings: [] };
-      parts.push([currentPart]);
-      string = string.slice(4);
+      currentPart = { type: 'comment', strings: [] };
+      htmlString = htmlString.slice(4);
     }
-    currentPart.strings.push(string);
+    currentPart.strings.push(htmlString);
     return;
   }
 };
-
-const parseStyle = string => {
-  const match = string.match(closeStyleRegex);
+/**
+ * Parses a string that is in a style context.
+ * It consumes tokens from the input string until the style tag closes and
+ * returns to a text context. If the end of the string is reached, it inserts a
+ * marker for a dynamic comment part.
+ */
+const parseStyle = htmlString => {
+  const match = htmlString.match(closeStyleRegex);
   if (match) {
     const styleEnd = match.index + 8;
     if (currentPart) {
-      htmlString += '</style>' + nodeMarker;
-      currentPart.strings.push(string.slice(0, match.index));
+      html += '</style>' + nodeMarker;
+      currentPart.strings.push(htmlString.slice(0, match.index));
+      parts.push(currentPart);
       currentPart = undefined;
       parse = parseText;
     } else {
-      htmlString += string.slice(0, styleEnd);
+      html += htmlString.slice(0, styleEnd);
     }
     parse = parseText;
-    return string.slice(styleEnd);
+    return htmlString.slice(styleEnd);
   } else {
-    if (!currentPart) {
-      currentPart = { committer: StyleCommitter, strings: [] };
-      parts.push([currentPart]);
+    if (currentPart) {
+      currentPart.strings.push(htmlString);
+    } else {
+      currentPart = { type: 'style', strings: [htmlString] };
     }
-    currentPart.strings.push(string);
-    // output.push(string, marker);
     return;
   }
 };
-
-const parseTag = string => {
-  let match = string.match(nodeEscapeRegex);
+const parseTag = htmlString => {
+  let match = htmlString.match(nodeEscapeRegex);
   if (match) {
+    const tagEnd = match.index + 1;
     if (match[1] === `>`) {
-      if (tagHasBinding) {
-        htmlString += nodeMarker;
-        tagHasBinding = false;
+      if (currentPart) {
+        html += nodeMarker;
+        parts.push(currentPart);
+        currentPart = undefined;
       }
-      htmlString += tagString + string.slice(0, match.index + 1);
+      html += tagString + htmlString.slice(0, tagEnd);
       tagString = '';
       parse = parseContext;
-      return string.slice(match.index + 1);
+      return htmlString.slice(tagEnd);
     } else {
-      parse = parseAttribute(match[1]);
-      tagString += string.slice(0, match.index + 1);
-      return string.slice(match.index + 1);
+      attributeDelimiter = match[1];
+      parse = parseAttribute;
+      tagString += htmlString.slice(0, tagEnd);
+      return htmlString.slice(tagEnd);
     }
   } else {
     // Bare attribute
-    if (!tagHasBinding) {
-      parts.push([]);
-      tagHasBinding = true;
+    match = htmlString.match(lastAttributeNameRegex);
+    if (currentPart) {
+      currentPart.attrs.push({ name: match[1] });
+    } else {
+      currentPart = { type: 'attribute', attrs: [{ name: match[1] }] };
     }
-    match = string.match(lastAttributeNameRegex);
-    parts[parts.length - 1].push({ committer: AttributeCommitter, name: match[1] });
-    tagString += string.slice(0, match.index);
-    return;
+    tagString += htmlString.slice(0, match.index);
   }
 };
-
-const parseAttribute = delimiter => string => {
-  const index = string.indexOf(delimiter);
+const parseAttribute = htmlString => {
+  const index = htmlString.indexOf(attributeDelimiter);
   if (index >= 0) {
-    if (currentPart) {
-      currentPart.strings.push(string.slice(0, index));
+    if (currentAttr) {
+      currentAttr.strings.push(htmlString.slice(0, index));
+      currentAttr = undefined;
     } else {
-      tagString += string.slice(0, index + 1);
+      tagString += htmlString.slice(0, index + 1);
     }
-    currentPart = undefined;
     parse = parseTag;
-    return string.slice(index + 1);
+    return htmlString.slice(index + 1);
   } else {
-    if (currentPart) {
-      currentPart.strings.push(string);
+    if (currentAttr) {
+      currentAttr.strings.push(htmlString);
     } else {
       const match = tagString.match(lastAttributeNameRegex);
       tagString = tagString.slice(0, match.index);
-      if (!tagHasBinding) {
-        parts.push([]);
-        tagHasBinding = true;
+      if (!currentPart) {
+        currentPart = { type: 'attribute', attrs: [] };
       }
-      currentPart = { committer: AttributeCommitter, name: match[1], strings: [string] };
-      parts[parts.length - 1].push(currentPart);
+      currentAttr = { name: match[1], strings: [htmlString] };
+      currentPart.attrs.push(currentAttr);
     }
-    return;
   }
 };
 
 export const parseStrings = strings => {
-  htmlString = '';
-  tagString = '';
   parts = [];
-  tagHasBinding = false;
+  html = '';
+  tagString = '';
   parse = parseText;
 
-  let string;
-  const lastString = strings.length - 1;
-  for (let i = 0; i < lastString; i++) {
-    string = strings[i];
+  let htmlString;
+  const lastStringIndex = strings.length - 1;
+  for (let i = 0; i < lastStringIndex; i++) {
+    htmlString = strings[i];
     do {
-      string = parse(string);
-    } while (string !== undefined); // Important, we must continue when string === ''
+      htmlString = parse(htmlString);
+    } while (htmlString !== undefined); // Important, we must continue when string === ''
   }
   // Only parse the last string until we hit text context;
-  string = strings[lastString];
+  htmlString = strings[lastStringIndex];
   while (parse !== parseText) {
-    string = parse(string);
+    htmlString = parse(htmlString);
   }
-  htmlString += string;
-  return { htmlString, parts };
+  html += htmlString;
+  return { html, parts };
 };

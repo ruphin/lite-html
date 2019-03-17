@@ -70,7 +70,7 @@ const htmlLite = ({ dest, format, uglified = false, transpiled = false }) => {
 const index = file => {
   return {
     input: `${file}.js`,
-    output: { banner: license, file: `${file}.es5.js`, format: 'iife', name: file.split('/').slice(-1)[0] },
+    output: { file: `${file}.out.js`, format: 'es', name: file.split('/').slice(-1)[0] },
     onwarn(warning, warn) {
       if (warning.code === 'THIS_IS_UNDEFINED' || warning.code === 'CIRCULAR_DEPENDENCY') return;
       warn(warning);
@@ -79,25 +79,22 @@ const index = file => {
       commonjs({
         include: 'node_modules/**'
       }),
-      babel({
-        presets: [['env', { modules: false }]],
-        plugins: ['external-helpers']
+      terser({
+        warnings: true,
+        mangle: {
+          module: true
+        }
       }),
       // Remove @license comments
       cleanup({
         maxEmptyLines: 1,
         comments: [/^[\*\s]*[^@\*\s]/]
-      })
+      }),
+      filesize()
     ]
   };
 };
 
-const config = [
-  htmlLite({ dest: 'lite-html.es5.js', format: 'umd', transpiled: true }),
-  htmlLite({ dest: 'lite-html.js', format: 'es' }),
-  htmlLite({ dest: 'lite-html.min.js', format: 'es', uglified: true }),
-  index('test/index'),
-  index('demo/index')
-];
+const config = [index('demo/derp2')];
 
 export default config;
