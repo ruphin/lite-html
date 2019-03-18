@@ -29,11 +29,9 @@ import { marker, templateMarker } from './markers.js';
 // const lastAttributeNameRegex = /[ \x09\x0a\x0c\x0d]([^\0-\x1F\x7F-\x9F \x09\x0a\x0c\x0d"'>=/]+)[ \x09\x0a\x0c\x0d]*=$/;
 // const filter = [].filter;
 
-export const prepareTemplate = (templateElement, parts) => {
+export const templateWalker = (templateElement, parts, callback) => {
   const walker = document.createTreeWalker(templateElement.content, 128 /* NodeFilter.SHOW_COMMENT */, null, false);
-
   const stack = [];
-
   let comment;
 
   parts.forEach(part => {
@@ -42,22 +40,7 @@ export const prepareTemplate = (templateElement, parts) => {
       if (comment === null) {
         walker.currentNode = stack.pop();
       } else if (comment.data === marker) {
-        if (part.type === 'style') {
-          const styleNode = comment.previousSibling;
-          part.strings.forEach(string => {
-            styleNode.appendChild(document.createTextNode(string));
-          });
-        }
-        if (part.type === 'node') {
-          const previousSibling = comment.previousSibling;
-          if (!previousSibling) {
-            comment.parentNode.insertBefore(document.createComment(''), comment);
-          }
-          const nextSibling = comment.nextSibling;
-          if (!nextSibling || nextSibling.data === marker) {
-            comment.parentNode.insertBefore(document.createComment(''), nextSibling);
-          }
-        }
+        callback(part, comment);
         break;
       } else if (comment.data === templateMarker) {
         const template = comment.nextSibling;

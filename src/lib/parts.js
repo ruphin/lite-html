@@ -205,7 +205,7 @@ export class CommentCommitter {
   }
 
   commit() {
-    const result = [];
+    const result = '';
     for (let i = 0; i < this.parts.length; i++) {
       result.push(this.strings[i]);
       result.push(this.parts[i].value);
@@ -237,59 +237,15 @@ export class CommentPart {
   }
 }
 
-export class StyleCommitter {
-  constructor({ node, strings }) {
-    this.node = node.previousSibling;
-    this.strings = strings;
-    this.parts = [];
-    for (let i = 0; i < strings.length - 1; i++) {
-      this.parts[i] = new StylePart(this);
-    }
-  }
-
-  commit() {
-    if (this.dirty) {
-      this.dirty = false;
-      const result = [];
-      for (let i = 0; i < this.parts.length; i++) {
-        result.push(this.strings[i]);
-        result.push(this.parts[i].value);
-      }
-      result.push(this.strings[this.parts.length]);
-      this.node.textContent = result.join('');
-    }
-  }
-}
-
-export class StylePart {
-  constructor(committer) {
-    this.committer = committer;
-  }
-
-  setValue(value) {
-    if (value !== noChange && (!isPrimitive(value) || value !== this.value)) {
-      if (isDirective(value)) {
-        value(this);
-      } else {
-        this.value = value;
-        this.committer.dirty = true;
-      }
-    }
-  }
-
-  commit() {
-    this.committer.commit();
-  }
-}
-
 export class AttributeCommitter {
   constructor({ node, name, strings }) {
     this.node = node.nextSibling;
     this.name = name;
-    this.strings = strings;
     this.parts = [];
     if (strings) {
-      for (let i = 0; i < strings.length - 1; i++) {
+      this.strings = strings;
+      const partCount = strings.length - 1;
+      for (let i = 0; i < partCount; i++) {
         this.parts[i] = new AttributePart(this);
       }
     } else {
@@ -298,18 +254,25 @@ export class AttributeCommitter {
   }
 
   commit() {
-    let result;
-    if (this.strings) {
-      result = '';
-      for (let i = 0; i < this.parts.length; i++) {
-        result += this.strings[i];
-        result += this.parts[i].value;
+    if (this.dirty) {
+      this.dirty = false;
+      const parts = this.parts;
+      const strings = this.strings;
+      if (!strings) {
+        this.node.setAttribute(this.name, parts[0].value);
+      } else {
+        let result = '';
+        const partCount = parts.length;
+        for (let i = 0; i < partCount; i++) {
+          result += strings[i];
+          const value = parts[i].value;
+          result += typeof value === 'string' ? value : String(value);
+        }
+        // Add the last String
+        result += this.strings[partCount];
+        this.node.setAttribute(this.name, result);
       }
-      result += this.strings[this.parts.length];
-    } else {
-      result = this.parts[0].value;
     }
-    this.node.setAttribute(this.name, result);
   }
 }
 
@@ -320,7 +283,7 @@ export class AttributePart {
   }
 
   setValue(value) {
-    if (value !== noChange && (!isPrimitive(value) || value !== this.value)) {
+    if (value !== noChange && !(isPrimitive(value) && value === this.value)) {
       if (isDirective(value)) {
         value(this);
       } else {
