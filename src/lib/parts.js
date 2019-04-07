@@ -237,51 +237,6 @@ export class CommentPart {
   }
 }
 
-export class StyleCommitter {
-  constructor({ node, strings }) {
-    this.node = node.previousSibling;
-    this.strings = strings;
-    this.parts = [];
-    for (let i = 0; i < strings.length - 1; i++) {
-      this.parts[i] = new StylePart(this);
-    }
-  }
-
-  commit() {
-    if (this.dirty) {
-      this.dirty = false;
-      const result = [];
-      for (let i = 0; i < this.parts.length; i++) {
-        result.push(this.strings[i]);
-        result.push(this.parts[i].value);
-      }
-      result.push(this.strings[this.parts.length]);
-      this.node.textContent = result.join('');
-    }
-  }
-}
-
-export class StylePart {
-  constructor(committer) {
-    this.committer = committer;
-  }
-
-  setValue(value) {
-    if (value !== noChange && (!isPrimitive(value) || value !== this.value)) {
-      if (isDirective(value)) {
-        value(this);
-      } else {
-        this.value = value;
-        this.committer.dirty = true;
-      }
-    }
-  }
-
-  commit() {
-    this.committer.commit();
-  }
-}
-
 export class AttributeCommitter {
   constructor({ node, name, strings }) {
     this.node = node.nextSibling;

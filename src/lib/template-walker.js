@@ -24,40 +24,21 @@
  */
 
 import { marker, templateMarker } from './markers.js';
-// import { AttributePart, CommentPart, NodePart } from './parts.js';
+const walker = document.createTreeWalker(document, 128 /* NodeFilter.SHOW_COMMENT */, null, false);
 
-// const lastAttributeNameRegex = /[ \x09\x0a\x0c\x0d]([^\0-\x1F\x7F-\x9F \x09\x0a\x0c\x0d"'>=/]+)[ \x09\x0a\x0c\x0d]*=$/;
-// const filter = [].filter;
-
-export const prepareTemplate = (templateElement, parts) => {
-  const walker = document.createTreeWalker(templateElement.content, 128 /* NodeFilter.SHOW_COMMENT */, null, false);
-
+export const templateWalker = (templateElement, parts) => handler => {
   const stack = [];
-
   let comment;
+  walker.currentNode = templateElement.content;
 
   parts.forEach(part => {
+    // This while(true) looks scary, but we are guaranteed to break or throw an Error
     while (true) {
       comment = walker.nextNode();
       if (comment === null) {
         walker.currentNode = stack.pop();
       } else if (comment.data === marker) {
-        if (part.type === 'style') {
-          const styleNode = comment.previousSibling;
-          part.strings.forEach(string => {
-            styleNode.appendChild(document.createTextNode(string));
-          });
-        }
-        if (part.type === 'node') {
-          const previousSibling = comment.previousSibling;
-          if (!previousSibling) {
-            comment.parentNode.insertBefore(document.createComment(''), comment);
-          }
-          const nextSibling = comment.nextSibling;
-          if (!nextSibling || nextSibling.data === marker) {
-            comment.parentNode.insertBefore(document.createComment(''), nextSibling);
-          }
-        }
+        handler(comment, part);
         break;
       } else if (comment.data === templateMarker) {
         const template = comment.nextSibling;

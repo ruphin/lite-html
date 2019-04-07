@@ -2,11 +2,6 @@ import { parseStrings } from '../src/lib/template-parser.js';
 import { marker } from '../src/lib/markers.js';
 import { html, svg } from '../src/lite-html.js';
 
-// window.a = html`
-//   <div ATTR="hi"></div>
-// `;
-// window.b = svg`<line y1="1" y2="1"/>`;
-
 window.input = html`
   <div>
     <!---->
@@ -32,18 +27,25 @@ window.input = html`
 
 window.input.template;
 
-const input = html`
-  <!-- This is a comment --><style bare=${1} test="${1} e ${1}">
-    div {
-      margin: ${'red'};
-    }
-  </style>
-  <div>a${1} ${1}${1}a</div>
-`;
+// const input = html`
+//   <!-- This is a comment --><style bare=${1} test="${1} e ${1}">
+//     div {
+//       margin: ${'red'};
+//     }
+//   </style>
+//   <div>a${1} ${1}${1}a</div>
+// `;
+// input.template;
 
-input.template;
-
-// let { htmlString, parts } = parseStrings(input);
+// window.input = html`
+//   <div attr=${1} and=" test=${1} Two ${1}" with="${1}">${1}</div>
+//   <script type="module">
+//     const a = '${1}';
+//     console.log('THING');
+//   </script>
+//   <!-- Test ${1} More ${1}${1} -->
+// `;
+// window.input.template;
 
 // document.getElementById('container').innerText = htmlString;
 // console.log(parts);

@@ -27,29 +27,55 @@
 
 import { nodeMarker, templateMarkerNode } from './markers.js';
 
-const tagRegex = /<[^\0-\x1F\x7F-\x9F "'>=/]+/;
+const tagRegex = /<([^\0-\x1F\x7F-\x9F "'>=/]+)/;
 
+// Matches the name of the last attribute that is defined in the current string
 const lastAttributeNameRegex = /[ \x09\x0a\x0c\x0d]([^\0-\x1F\x7F-\x9F "'>=/]+)[ \x09\x0a\x0c\x0d]*=[ \x09\x0a\x0c\x0d"']*$/;
 
 const nodeEscapeRegex = /([>'"])/;
-const closeCommentRegex = /-->/;
-// Note: This strictly only allows the literal `</style>` to close style tags
-const closeStyleRegex = /<\/style>/;
+const closeCommentString = '-->';
 
+// The output HTML string
 let html;
+
+// The output Part descriptions
 let parts;
+
+// The current Part that is being processed (for multi-part attributes, comments, and scoped contexts)
 let currentPart;
+
+// The current Attribute that is being parsed (for multi-part attributes)
 let currentAttr;
+
+// The content of the current tag (Everything between < and > characters) that should be included in `html`
 let tagString;
+
+// The current context to be parsed [parseText|parseComment|parseScoped|parseTag|parseAttribute]
 let parse;
-let parseContext;
+
+// The next context after parsing a complete tag [parseText|parseScoped]
+let nextContext;
+
+// The delimiter for closing the current attribute that is parsed ['|"]
 let attributeDelimiter;
+
+// The tagname of the current tag being parsed.
+// parseScoped needs this to determine what tag closes the scope (`</${tag}>`)
+let tag;
+
 /**
- * Parses a string that is in a free text context.
- * It consumes tokens from the input string until the context enters another
- * context (tag, comment, style). If the end of the string is reached, it
- * inserts a marker for a dynamic text part. Returns the remainder of the string
- * after all text tokens have been consumed.
+ * Parses a string that is in a free text context (anything outside html tags).
+ * It consumes tokens from the input string until it enters another
+ * context (through any html opening tag).
+ *
+ * If the end of the string is reached, it inserts a marker for a Node part.
+ *
+ * If all text tokens have been consumed, it changes the parsing context
+ * (comment, or regular tag). Also sets the next context based on the tag
+ * that is encountered (scoped, or text).
+ *
+ * If a template tag is encountered, it inserts a template marker.
+ *
  */
 const parseText = htmlString => {
   const match = htmlString.match(tagRegex);
@@ -60,13 +86,14 @@ const parseText = htmlString => {
       parse = parseComment;
     } else {
       parse = parseTag;
-      if (htmlString.slice(0, 6) === '<style') {
-        parseContext = parseStyle;
+      tag = match[1];
+      if (tag === 'script' || tag === 'style') {
+        nextContext = parseScoped;
       } else {
-        if (htmlString.slice(0, 9) === '<template') {
+        if (tag === 'template') {
           html += templateMarkerNode;
         }
-        parseContext = parseText;
+        nextContext = parseText;
       }
     }
     return htmlString;
@@ -74,87 +101,92 @@ const parseText = htmlString => {
     html += htmlString + nodeMarker;
     parts.push({ type: 'node' });
     parse = parseText;
-    return;
   }
 };
+
 /**
  * Parses a string that is in a comment context.
- * It consumes tokens from the input string until the comment closes and returns
- * to a text context. If the end of the string is reached, it inserts a marker
- * for a dynamic comment part.
+ * It consumes tokens from the input string until the comment closes.
+ *
+ * If the end of the string is reached, it creates a comment Part.
+ *
+ * If all comment tokens have been consumed, it changes the context to parsing text.
  */
 const parseComment = htmlString => {
-  const match = htmlString.match(closeCommentRegex);
-  if (match) {
-    const commentEnd = match.index + 3;
+  const index = htmlString.indexOf(closeCommentString);
+  if (index >= 0) {
+    const commentEnd = index + 3;
     if (currentPart) {
       html += nodeMarker;
-      currentPart.strings.push(htmlString.slice(0, match.index));
+      currentPart.strings.push(htmlString.slice(0, index));
       parts.push(currentPart);
       currentPart = undefined;
     } else {
       html += htmlString.slice(0, commentEnd);
     }
-    return parseText(htmlString.slice(commentEnd));
+    parse = parseText;
+    return htmlString.slice(commentEnd);
   } else {
     if (!currentPart) {
       currentPart = { type: 'comment', strings: [] };
       htmlString = htmlString.slice(4);
     }
     currentPart.strings.push(htmlString);
-    return;
   }
 };
+
 /**
- * Parses a string that is in a style context.
- * It consumes tokens from the input string until the style tag closes and
- * returns to a text context. If the end of the string is reached, it inserts a
- * marker for a dynamic comment part.
+ * Parses a string that is in a scoped context like inside <style> or <script> blocks.
+ * It consumes tokens from the input string until the tag closes.
+ *
+ * If the end of the string is reached, it creates a scoped Part.
+ *
+ * If all tokens have been consumed, it changes the context to parsing text.
  */
-const parseStyle = htmlString => {
-  const match = htmlString.match(closeStyleRegex);
-  if (match) {
-    const styleEnd = match.index + 8;
+const parseScoped = htmlString => {
+  // Note: This strictly only allows the literal `</tag>` to close scoped tags
+  const closeTag = `</${tag}>`;
+  const index = htmlString.indexOf(closeTag);
+  if (index >= 0) {
+    const endIndex = index + closeTag.length;
     if (currentPart) {
-      html += '</style>' + nodeMarker;
-      currentPart.strings.push(htmlString.slice(0, match.index));
+      html += closeTag + nodeMarker;
+      currentPart.strings.push(htmlString.slice(0, index));
       parts.push(currentPart);
       currentPart = undefined;
-      parse = parseText;
     } else {
-      html += htmlString.slice(0, styleEnd);
+      html += htmlString.slice(0, endIndex);
     }
     parse = parseText;
-    return htmlString.slice(styleEnd);
+    return htmlString.slice(endIndex); // Continue parsing the next context
   } else {
-    if (currentPart) {
-      currentPart.strings.push(htmlString);
-    } else {
-      currentPart = { type: 'style', strings: [htmlString] };
+    if (!currentPart) {
+      currentPart = { type: 'scoped', strings: [] };
     }
-    return;
+    currentPart.strings.push(htmlString);
   }
 };
+
 const parseTag = htmlString => {
   let match = htmlString.match(nodeEscapeRegex);
   if (match) {
     const tagEnd = match.index + 1;
+    const tagStringEnding = htmlString.slice(0, tagEnd);
     if (match[1] === `>`) {
       if (currentPart) {
         html += nodeMarker;
         parts.push(currentPart);
         currentPart = undefined;
       }
-      html += tagString + htmlString.slice(0, tagEnd);
+      html += tagString + tagStringEnding;
       tagString = '';
-      parse = parseContext;
-      return htmlString.slice(tagEnd);
+      parse = nextContext;
     } else {
       attributeDelimiter = match[1];
+      tagString += tagStringEnding;
       parse = parseAttribute;
-      tagString += htmlString.slice(0, tagEnd);
-      return htmlString.slice(tagEnd);
     }
+    return htmlString.slice(tagEnd);
   } else {
     // Bare attribute
     match = htmlString.match(lastAttributeNameRegex);
@@ -166,6 +198,7 @@ const parseTag = htmlString => {
     tagString += htmlString.slice(0, match.index);
   }
 };
+
 const parseAttribute = htmlString => {
   const index = htmlString.indexOf(attributeDelimiter);
   if (index >= 0) {
@@ -204,9 +237,10 @@ export const parseStrings = strings => {
     htmlString = strings[i];
     do {
       htmlString = parse(htmlString);
-    } while (htmlString !== undefined); // Important, we must continue when string === ''
+    } while (htmlString !== undefined); // Important; we must continue parsing when string === ''
   }
-  // Only parse the last string until we hit text context;
+  // Only parse the last string until we hit text context
+  // This is to close any remaining context surrounding the last part
   htmlString = strings[lastStringIndex];
   while (parse !== parseText) {
     htmlString = parse(htmlString);

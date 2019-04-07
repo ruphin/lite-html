@@ -23,10 +23,8 @@
  * SOFTWARE.
  */
 
-import { TemplateResult, SVGTemplateResult } from './lib/templates.js';
-// import { NodePart } from './lib/parts.js';
-
-// export { noChange } from './lib/parts.js';
+import { TemplateResult, SVGTemplateResult } from './lib/template-result.js';
+import { NodePart } from './lib/parts.js';
 
 // A lookup map for NodeParts that represent the content of a render target
 const nodeParts = new WeakMap();
