@@ -28,20 +28,20 @@ const walker = document.createTreeWalker(document, 128 /* NodeFilter.SHOW_COMMEN
 
 export const templateWalker = (templateElement, parts) => handler => {
   const stack = [];
-  let comment;
+  let commentNode;
   walker.currentNode = templateElement.content;
 
   parts.forEach(part => {
-    // This while(true) looks scary, but we are guaranteed to break or throw an Error
+    // This while(true) looks scary, but we are guaranteed to break or throw an Error eventually
     while (true) {
-      comment = walker.nextNode();
-      if (comment === null) {
+      commentNode = walker.nextNode();
+      if (commentNode === null) {
         walker.currentNode = stack.pop();
-      } else if (comment.data === marker) {
-        handler(comment, part);
+      } else if (commentNode.data === marker) {
+        handler(commentNode, part);
         break;
-      } else if (comment.data === templateMarker) {
-        const template = comment.nextSibling;
+      } else if (commentNode.data === templateMarker) {
+        const template = commentNode.nextSibling;
         walker.currentNode = template.content;
         stack.push(template);
       }

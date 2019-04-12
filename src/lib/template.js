@@ -63,28 +63,28 @@ export class Template {
 
     /**
      * Prepare the template
-     *  - Insert individual TextNodes with parsed content inside scoped contexts (`<style>` and `<script>`)
-     *  - Insert CommentNodes surrounding NodeParts if it is missing siblings
+     *  * Insert individual TextNodes with parsed content inside scoped contexts (`<style>` and `<script>`)
+     *  * Insert CommentNodes surrounding NodeParts if it is missing siblings
      */
-    walker((node, part) => {
-      if (part.type === 'scoped') {
-        const scopedNode = node.previousSibling;
-        part.strings.forEach(string => {
+    walker((markerNode, partDescription) => {
+      if (partDescription.type === 'scoped') {
+        const scopedNode = markerNode.previousSibling;
+        partDescription.strings.forEach(string => {
           scopedNode.appendChild(document.createTextNode(string));
         });
-      } else if (part.type === 'node') {
-        const previousSibling = node.previousSibling;
+      } else if (partDescription.type === 'node') {
+        const previousSibling = markerNode.previousSibling;
         if (!previousSibling) {
-          node.parentNode.insertBefore(document.createComment(''), node);
+          markerNode.parentNode.insertBefore(document.createComment(''), markerNode);
         }
-        const nextSibling = node.nextSibling;
+        const nextSibling = markerNode.nextSibling;
         if (!nextSibling || nextSibling.data === marker) {
-          node.parentNode.insertBefore(document.createComment(''), nextSibling);
+          markerNode.parentNode.insertBefore(document.createComment(''), nextSibling);
         }
       }
     });
 
-    this.templateWalker = walker;
+    this.walker = walker;
     this.element = templateElement;
     this.parts = parts;
 

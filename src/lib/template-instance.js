@@ -14,7 +14,7 @@ export class TemplateInstance {
     this.fragment = document.importNode(template.element.content, true);
     this.parts = [];
 
-    template.templateWalker((node, part) => {
+    template.templateWalker((markerNode, partDescription) => {
       // TODO: create parts here
     });
 
