@@ -40,16 +40,18 @@ const emptyNode = {};
 const iterableNode = {};
 
 export class NodePart {
-  // node OR parent _must_ be defined
-  // If a node is defined, this NodePart represents the position of that node in the tree
-  // If a only a parent is defined, this NodePart represents the content of the parent
-  constructor({ node }) {
-    this.node = emptyNode;
+  // node OR before and after _must_ be defined
+  // If node is defined, this NodePart represents the position of that node in the tree
+  // If before and after are defined, this NodePart represents the content between those nodes
+  constructor({ node, before, after }) {
+    this.node = node || emptyNode;
     this.value = noChange;
+    this.beforeNode = before || node.previousSibling;
+    this.afterNode = after || node.nextSibling;
+  }
 
-    this.beforeNode = node;
-    this.afterNode = node.nextSibling;
-    this.parentNode = node.parentNode;
+  get parentNode() {
+    return this.beforeNode.parentNode;
   }
 
   setValue(value) {
@@ -196,22 +198,30 @@ export class NodePart {
 
 export class CommentCommitter {
   constructor({ node, strings }) {
+    const parts = [];
+    const partCount = strings.length - 1;
     this.node = node;
     this.strings = strings;
-    this.parts = [];
-    for (let i = 0; i < strings.length - 1; i++) {
-      this.parts[i] = new CommentPart(this);
+    this.parts = parts;
+    this.dirty = false;
+    for (let i = 0; i < partCount; i++) {
+      parts[i] = new CommentPart(this);
     }
   }
 
   commit() {
-    const result = [];
-    for (let i = 0; i < this.parts.length; i++) {
-      result.push(this.strings[i]);
-      result.push(this.parts[i].value);
+    if (this.dirty) {
+      const result = '';
+      const { node, strings, parts } = this;
+      const partCount = parts.length;
+      for (let i = 0; i < partCount; i++) {
+        result += strings[i];
+        result += parts[i].value;
+      }
+      result += strings[partCount];
+      node.textContent = result;
+      this.dirty = false;
     }
-    result.push(this.strings[this.parts.length]);
-    this.node.textContent = result.join('');
   }
 }
 
@@ -239,32 +249,35 @@ export class CommentPart {
 
 export class AttributeCommitter {
   constructor({ node, name, strings }) {
+    const parts = [];
     this.node = node.nextSibling;
-    this.name = name;
+    this.attribute = name;
     this.strings = strings;
-    this.parts = [];
+    this.parts = parts;
     if (strings) {
-      for (let i = 0; i < strings.length - 1; i++) {
-        this.parts[i] = new AttributePart(this);
+      const partCount = strings.length - 1;
+      for (let i = 0; i < partCount; i++) {
+        parts[i] = new AttributePart(this);
       }
     } else {
-      this.parts.push(new AttributePart(this));
+      parts[0] = new AttributePart(this);
     }
   }
 
   commit() {
     let result;
-    if (this.strings) {
+    const { node, attribute, strings, parts } = this;
+    if (strings) {
+      const partCount = parts.length;
       result = '';
-      for (let i = 0; i < this.parts.length; i++) {
-        result += this.strings[i];
-        result += this.parts[i].value;
+      for (let i = 0; i < partCount; i++) {
+        result += strings[i] + parts[i].value;
       }
-      result += this.strings[this.parts.length];
+      result += strings[partCount];
     } else {
-      result = this.parts[0].value;
+      result = parts[0].value;
     }
-    this.node.setAttribute(this.name, result);
+    node.setAttribute(attribute, result);
   }
 }
 
@@ -275,7 +288,7 @@ export class AttributePart {
   }
 
   setValue(value) {
-    if (value !== noChange && (!isPrimitive(value) || value !== this.value)) {
+    if (value !== noChange && !(isPrimitive(value) && value === this.value)) {
       if (isDirective(value)) {
         value(this);
       } else {

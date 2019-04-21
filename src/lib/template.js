@@ -59,8 +59,6 @@ export class Template {
       templateElement.innerHTML = html;
     }
 
-    console.log('PARSED', html);
-
     /**
      * Prepare the template
      *  * Insert individual TextNodes with parsed content inside scoped contexts (`<style>` and `<script>`)

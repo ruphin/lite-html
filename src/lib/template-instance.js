@@ -1,3 +1,5 @@
+import { NodePart, AttributeCommitter, CommentCommitter } from './parts.js';
+
 /**
  * An instance of a template that can be rendered somewhere
  *
@@ -15,7 +17,28 @@ export class TemplateInstance {
     this.parts = [];
 
     template.templateWalker((markerNode, partDescription) => {
-      // TODO: create parts here
+      const partType = partDescription.type;
+      if (partType === 'node') {
+        parts.push(new NodePart({ node: markerNode }));
+      } else if (partType === 'scoped') {
+        let before = markerNode.previousSibling.firstChild;
+        let after = before.nextSibling;
+        while (after) {
+          parts.push(new NodePart({ before, after }));
+          before = after;
+          after = before.nextSibling;
+        }
+        // Remove markerNode?
+      } else if (partType === 'comment') {
+        const node = markerNode;
+        const strings = partDescription.strings;
+        const committer = new CommentCommitter({ node, strings });
+        this.parts = this.parts.concat(committer.parts); // TODO: cleaner way?
+      } else if (partType === 'attribute') {
+        const node = markerNode.nextSiblng;
+
+        // Remove markerNode?
+      }
     });
 
     // Create new Parts based on the part definitions set on the Template
