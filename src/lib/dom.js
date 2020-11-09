@@ -23,6 +23,7 @@
  * SOFTWARE.
  */
 
+import { marker } from './markers.js';
 /**
  * Move nodes from to a new parent, or remove them from the old parent if no new parent is given
  */
@@ -43,4 +44,8 @@ export const moveNodes = (oldParent, previous = null, after = null, newParent, b
       nodeToMove = nextNode;
     }
   }
+};
+
+export const createTextNode = () => {
+  return document.createTextNode('');
 };

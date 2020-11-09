@@ -57,9 +57,11 @@ export const render = (content, target) => {
   let part = nodeParts.get(target);
   if (!part) {
     // If it does not, create a new NodePart
-    part = new NodePart({ parent: target });
+    part = new NodePart();
+    part.appendIntoNode(target);
     nodeParts.set(target, part);
   }
   // Task the NodePart of this target to render the content
-  part.render(content);
+  part.setValue(content);
+  part.commit();
 };

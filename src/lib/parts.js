@@ -23,8 +23,9 @@
  * SOFTWARE.
  */
 
-// import { TemplateResult, TemplateInstance } from './templates.js';
-import { moveNodes } from './dom.js';
+import { TemplateResult } from './template-result.js';
+import { TemplateInstance } from './template-instance.js';
+import { moveNodes, createTextNode } from './dom.js';
 import { isDirective } from './directive.js';
 
 export const isPrimitive = value => value === null || !(typeof value === 'object' || typeof value === 'function');
@@ -40,14 +41,24 @@ const emptyNode = {};
 const iterableNode = {};
 
 export class NodePart {
-  // node OR before and after _must_ be defined
-  // If node is defined, this NodePart represents the position of that node in the tree
-  // If before and after are defined, this NodePart represents the content between those nodes
-  constructor({ node, before, after }) {
-    this.node = node || emptyNode;
-    this.value = noChange;
-    this.beforeNode = before || node.previousSibling;
-    this.afterNode = after || node.nextSibling;
+  // // node OR before and after _must_ be defined
+  // // If node is defined, this NodePart represents the position of that node in the tree
+  // // If before and after are defined, this NodePart represents the content between those nodes
+  // constructor({ node, before, after }) {
+  //   this.node = node || emptyNode;
+  //   this.value = noChange;
+  //   this.beforeNode = before || node.previousSibling;
+  //   this.afterNode = after || node.nextSibling;
+  // }
+
+  appendIntoNode(container) {
+    this.beforeNode = container.appendChild(createTextNode());
+    this.afterNode = container.appendChild(createTextNode());
+  }
+
+  insertAfterNode(beforeNode) {
+    this.beforeNode = beforeNode;
+    this.afterNode = beforeNode.nextSibling;
   }
 
   get parentNode() {
@@ -99,7 +110,7 @@ export class NodePart {
     if (this.value !== serializable) {
       // If the node is a TextNode, replace the content of that node
       // Otherwise, create a new TextNode with the primitive value as content
-      if (this.node.nodeType === 3) {
+      if (this.node && this.node.nodeType === 3) {
         this.node.textContent = serializable;
       } else {
         this._renderNode(document.createTextNode(serializable));
@@ -153,20 +164,22 @@ export class NodePart {
     for (const value of iterable) {
       let part = this.iterableParts[index];
       if (part === undefined) {
-        after = document.createTextNode('');
-        this.parentNode.insertBefore(after, this.afterNode);
-        part = new NodePart({ before, after, parent });
+        after = createTextNode();
+        parent.insertBefore(after, this.afterNode);
+        part = new NodePart();
+        part.insertAfterNode(before);
         this.iterableParts.push(part);
         before = after;
       }
-      part.render(value);
+      part.setValue(value);
+      part.commit();
       index++;
     }
     if (index === 0) {
-      moveNodes(this.parentNode, this.beforeNode, this.afterNode);
+      moveNodes(parent, this.beforeNode, this.afterNode);
     } else if (index < this.iterableParts.length) {
       const lastPart = this.iterableParts[index - 1];
-      moveNodes(this.parentNode, lastPart.afterNode, this.afterNode);
+      moveNodes(parent, lastPart.afterNode, this.afterNode);
     }
     this.iterableParts.length = index;
   }
@@ -211,7 +224,7 @@ export class CommentCommitter {
 
   commit() {
     if (this.dirty) {
-      const result = '';
+      let result = '';
       const { node, strings, parts } = this;
       const partCount = parts.length;
       for (let i = 0; i < partCount; i++) {
@@ -250,8 +263,8 @@ export class CommentPart {
 export class AttributeCommitter {
   constructor({ node, name, strings }) {
     const parts = [];
-    this.node = node.nextSibling;
-    this.attribute = name;
+    this.node = node;
+    this.name = name;
     this.strings = strings;
     this.parts = parts;
     if (strings) {
@@ -262,11 +275,24 @@ export class AttributeCommitter {
     } else {
       parts[0] = new AttributePart(this);
     }
+    switch (name[0]) {
+      case '.':
+        this._render = this._renderProperty;
+      case '?':
+        this._render = this._render || this._renderBoolean;
+      case '@':
+        this._render = this._render || this._renderEvent;
+        this.name = name.slice(1);
+        break;
+      default:
+        this._render = this._renderAttribute;
+        this.name = name;
+    }
   }
 
   commit() {
     let result;
-    const { node, attribute, strings, parts } = this;
+    const { strings, parts } = this;
     if (strings) {
       const partCount = parts.length;
       result = '';
@@ -277,7 +303,33 @@ export class AttributeCommitter {
     } else {
       result = parts[0].value;
     }
-    node.setAttribute(attribute, result);
+    this._render(result);
+  }
+
+  _renderProperty(value) {
+    this.node[this.name] = value;
+  }
+
+  _renderBoolean(boolean) {
+    if (this.value !== !!boolean) {
+      boolean ? this.node.setAttribute(this.name, '') : this.node.removeAttribute(this.name);
+      this.value = !!boolean;
+    }
+  }
+
+  _renderEvent(listener) {
+    if (this.value !== listener) {
+      this.node.removeEventListener(this.name, this.value);
+      this.node.addEventListener(this.name, listener);
+      this.value = listener;
+    }
+  }
+
+  _renderAttribute(string) {
+    if (this.value !== string) {
+      this.node.setAttribute(this.name, string);
+      this.value = string;
+    }
   }
 }
 
@@ -301,56 +353,4 @@ export class AttributePart {
   commit() {
     this.committer.commit();
   }
-
-  // constructor({ node, attribute }) {
-  //   this.node = node.nextSibling;
-  //   switch (attribute[0]) {
-  //     case '.':
-  //       this._render = this._renderProperty;
-  //     case '?':
-  //       this._render = this._render || this._renderBoolean;
-  //     case '@':
-  //       this._render = this._render || this._renderEvent;
-  //       this.node.removeAttribute(attribute);
-  //       this.name = attribute.slice(1);
-  //       break;
-  //     default:
-  //       this._render = this._renderAttribute;
-  //       this.name = attribute;
-  //   }
-  // }
-
-  // render(value) {
-  //   if (isDirective(value)) {
-  //     value(this);
-  //   } else if (value !== noChange) {
-  //     this._render(value);
-  //   }
-  // }
-
-  // _renderProperty(value) {
-  //   this.node[this.name] = value;
-  // }
-
-  // _renderBoolean(boolean) {
-  //   if (this.value !== !!boolean) {
-  //     boolean ? this.node.setAttribute(this.name, '') : this.node.removeAttribute(this.name);
-  //     this.value = !!boolean;
-  //   }
-  // }
-
-  // _renderEvent(listener) {
-  //   if (this.value !== listener) {
-  //     this.node.removeEventListener(this.name, this.value);
-  //     this.node.addEventListener(this.name, listener);
-  //     this.value = listener;
-  //   }
-  // }
-
-  // _renderAttribute(string) {
-  //   if (this.value !== string) {
-  //     this.node.setAttribute(this.name, string);
-  //     this.value = string;
-  //   }
-  // }
 }

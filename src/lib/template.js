@@ -25,7 +25,7 @@
 
 import { parseStrings } from './template-parser.js';
 import { templateWalker } from './template-walker.js';
-import { moveNodes } from './dom.js';
+import { createTextNode, moveNodes } from './dom.js';
 import { marker } from './markers.js';
 
 /**
@@ -46,7 +46,7 @@ export class Template {
   constructor(strings, isSVG) {
     const { html, parts } = parseStrings(strings);
     const templateElement = document.createElement('template');
-    const walker = templateWalker(templateElement, parts);
+    const walker = templateWalker(templateElement.content, parts);
 
     // If the Template is an SVG type, wrap the template with an <svg> tag during parsing
     if (isSVG) {
@@ -73,11 +73,11 @@ export class Template {
       } else if (partDescription.type === 'node') {
         const previousSibling = markerNode.previousSibling;
         if (!previousSibling) {
-          markerNode.parentNode.insertBefore(document.createComment(''), markerNode);
+          markerNode.parentNode.insertBefore(createTextNode(), markerNode);
         }
         const nextSibling = markerNode.nextSibling;
         if (!nextSibling || nextSibling.data === marker) {
-          markerNode.parentNode.insertBefore(document.createComment(''), nextSibling);
+          markerNode.parentNode.insertBefore(createTextNode(), nextSibling);
         }
       }
     });

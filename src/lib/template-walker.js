@@ -26,25 +26,28 @@
 import { marker, templateMarker } from './markers.js';
 const walker = document.createTreeWalker(document, 128 /* NodeFilter.SHOW_COMMENT */, null, false);
 
-export const templateWalker = (templateElement, parts) => handler => {
+export const templateWalker = (node, parts) => handler => {
   const stack = [];
   let commentNode;
-  walker.currentNode = templateElement.content;
+  walker.currentNode = node;
+  commentNode = walker.nextNode();
 
   parts.forEach(part => {
     // This while(true) looks scary, but we are guaranteed to break or throw an Error eventually
     while (true) {
-      commentNode = walker.nextNode();
       if (commentNode === null) {
         walker.currentNode = stack.pop();
       } else if (commentNode.data === marker) {
-        handler(commentNode, part);
+        const markerNode = commentNode;
+        commentNode = walker.nextNode();
+        handler(markerNode, part);
         break;
       } else if (commentNode.data === templateMarker) {
         const template = commentNode.nextSibling;
         walker.currentNode = template.content;
         stack.push(template);
       }
+      commentNode = walker.nextNode();
     }
   });
 };

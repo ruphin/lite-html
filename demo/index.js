@@ -20,14 +20,22 @@ const remove = e => {
 
 const template = () => {
   return html`
-      <!-- ${'todo-app'}> -->
+      <style>
+        button {
+          font-weight: ${'bold'};
+          padding: ${6}px;
+        }
+        input {
+          padding: ${6}px;
+        }
+      </style>
+      <!-- ${'todo-app'} -->
       <input id="input"></input>
       <button attribute=${'something'} @click=${add}>Add todo</button>
       ${todos.map(
         todo => html`
-        <p .todo=${todo.id}>
-          <button @click=${remove}>X</button> - ${todo.text}
-        </p>`
+          <p .todo=${todo.id}><button @click=${remove}>X</button> - ${todo.text}</p>
+        `
       )}
     `;
 };

@@ -95,6 +95,6 @@ const index = file => {
   };
 };
 
-const config = [index('demo/derp2')];
+const config = [htmlLite({ dest: 'out.js', uglified: true, format: 'es' }), index('demo/derp2')];
 
 export default config;
