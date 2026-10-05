@@ -1,9 +1,0 @@
-Makefile
-src
-test
-demo
-.prettierignore
-.travis.yml
-browsersync.config.js
-rollup.config.js
-wct.conf.json

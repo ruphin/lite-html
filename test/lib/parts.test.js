@@ -2,7 +2,7 @@
  * @license
  * MIT License
  *
- * Copyright (c) 2018 Goffert van Gool
+ * Copyright (c) 2026 Goffert van Gool
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@ import { when } from '../../src/directives/when.js';
 const html = (strings, ...values) => new TemplateResult(strings, values);
 const fragmentString = documentFragment => [].map.call(documentFragment.childNodes, node => node.outerHTML).join('');
 
-const expect = chai.expect;
+import { describe, it, expect } from 'vitest';
 
 describe('parts', () => {
   describe('isSerializable', () => {

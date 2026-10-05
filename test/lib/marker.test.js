@@ -2,7 +2,7 @@
  * @license
  * MIT License
  *
- * Copyright (c) 2018 Goffert van Gool
+ * Copyright (c) 2026 Goffert van Gool
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +25,7 @@
 
 import { marker, attributeMarker, commentMarker, nodeMarker, failMarker, IEStyleMarker } from '../../src/lib/markers.js';
 
-const expect = chai.expect;
+import { describe, it, expect } from 'vitest';
 
 describe('markers', () => {
   describe('marker', () => {

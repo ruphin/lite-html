@@ -1,4 +1,2 @@
 node_modules
-lite-html.*
-!src/lite-html.*
-*.es5.js
+dist

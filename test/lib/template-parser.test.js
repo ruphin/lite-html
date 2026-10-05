@@ -2,7 +2,7 @@
  * @license
  * MIT License
  *
- * Copyright (c) 2018 Goffert van Gool
+ * Copyright (c) 2026 Goffert van Gool
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,7 +37,7 @@ import {
 } from '../../src/lib/template-parser.js';
 import { attributeMarker, commentMarker, nodeMarker, failMarker } from '../../src/lib/markers.js';
 
-const expect = chai.expect;
+import { describe, it, expect } from 'vitest';
 const html = strings => strings;
 
 describe('templateParser', () => {

@@ -2,7 +2,7 @@
  * @license
  * MIT License
  *
- * Copyright (c) 2018 Goffert van Gool
+ * Copyright (c) 2026 Goffert van Gool
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,7 @@
 import { unsafeHTML } from '../../src/directives/unsafe-html.js';
 import { render, html } from '../../src/lite-html.js';
 
-const expect = chai.expect;
+import { describe, it, beforeEach, expect } from 'vitest';
 
 describe('unsafeHTML', () => {
   let container;

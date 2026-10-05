@@ -2,9 +2,7 @@
 
 ---
 
-[![Build Status](https://api.travis-ci.org/ruphin/lite-html.svg?branch=master)](https://travis-ci.org/ruphin/lite-html)
 [![NPM Latest version](https://img.shields.io/npm/v/lite-html.svg)](https://www.npmjs.com/package/lite-html)
-[![Code Style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg)](https://github.com/prettier/prettier)
 
 _A modern replacement for VirtualDOM rendering engines_
 
@@ -54,14 +52,16 @@ With NPM
 npm install lite-html
 ```
 
-Lite-html exposes an API through ES6 Modules. You can use it from CDN, or from your local `node_modules` folder after installing.
+Lite-html is published as an ES module. Import it from your bundler or Node project:
 
 ```javascript
-// From CDN
-import { html, render } from 'https://unpkg.com/lite-html';
+import { html, render } from 'lite-html';
+```
 
-// From node_modules
-import { html, render } from './node_modules/lite-html/lite-html.js';
+Or load it directly from a CDN:
+
+```javascript
+import { html, render } from 'https://unpkg.com/lite-html';
 ```
 
 ## API
@@ -150,8 +150,20 @@ Todo: Explain what is different
 
 Todo: Explain all the things
 
+## Development
+
+Requires Node.js.
+
+```
+npm install
+npm run dev         # Serve the demo with Vite
+npm test            # Run the test suite once with Vitest
+npm run test:watch  # Run tests in watch mode
+npm run build       # Build dist/lite-html.js and dist/lite-html.min.js
+```
+
 ## License
 
 [MIT](http://opensource.org/licenses/MIT)
 
-Copyright © 2018-present, Goffert van Gool
+Copyright © 2026 Goffert van Gool

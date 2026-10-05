@@ -2,7 +2,7 @@
  * @license
  * MIT License
  *
- * Copyright (c) 2018 Goffert van Gool
+ * Copyright (c) 2026 Goffert van Gool
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,7 @@ import { buildTemplate } from '../../src/lib/template-parser.js';
 import { findParts } from '../../src/lib/node-walker.js';
 import { AttributePart, CommentPart, NodePart } from '../../src/lib/parts.js';
 
-const expect = chai.expect;
+import { describe, it, expect } from 'vitest';
 const html = strings => strings;
 
 describe('nodeWalker', () => {
