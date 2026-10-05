@@ -23,11 +23,11 @@
  * SOFTWARE.
  */
 
-const directives = new WeakMap();
+const directives = new WeakSet();
 
-export const isDirective = value => directives.has(value)
+export const isDirective = value => directives.has(value);
 
 export const directive = directive => {
-  directives.set(directive, null);
+  directives.add(directive);
   return directive;
 };

@@ -138,6 +138,21 @@ const handleclick = () => {
 const template = () => html`<button @click=${handleClick}></button>`;
 ```
 
+### Directives
+
+Directives are exported alongside `html` and `render`.
+
+```javascript
+import { html, render, guard, ifDefined, repeat, unsafeHTML, until, when } from 'lite-html';
+```
+
+- `guard(dependencies, valueFn)` renders the result of `valueFn`, and only calls it again when one of the `dependencies` changes identity.
+- `ifDefined(value)` sets an attribute to `value`, or removes the attribute when `value` is `undefined` or `null`.
+- `repeat(items, keyFn, template)` renders `template(item, index)` for each item. The DOM for each key returned by `keyFn` is kept and moved when items are reordered. Without `keyFn`, it renders like `items.map(template)`.
+- `when(condition, trueValue, falseValue)` renders `trueValue` if `condition` is truthy, and `falseValue` otherwise.
+- `until(promise, defaultContent)` renders `defaultContent` until `promise` resolves, then renders its result.
+- `unsafeHTML(htmlString)` renders a string as HTML. Never use it with untrusted input.
+
 ## Why it is fast
 
 Todo: Explain why it is fast
@@ -159,7 +174,7 @@ npm install
 npm run dev         # Serve the demo with Vite
 npm test            # Run the test suite once with Vitest
 npm run test:watch  # Run tests in watch mode
-npm run build       # Build dist/lite-html.js and dist/lite-html.min.js
+npm run build       # Build the minified bundle served by unpkg
 ```
 
 ## License

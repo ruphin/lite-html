@@ -23,11 +23,10 @@
  * SOFTWARE.
  */
 
-import { IEStyleMarker, attributeMarker, commentMarker, nodeMarker, failMarker } from './markers.js';
+import { attributeMarker, commentMarker, nodeMarker, failMarker } from './markers.js';
 import { AttributePart, CommentPart, NodePart } from './parts.js';
 
 const lastAttributeNameRegex = /[ \x09\x0a\x0c\x0d]([^\0-\x1F\x7F-\x9F \x09\x0a\x0c\x0d"'>=/]+)[ \x09\x0a\x0c\x0d]*=$/;
-const filter = [].filter;
 
 export const findParts = (strings, template) => {
   let parts = [];
@@ -57,12 +56,7 @@ export const findParts = (strings, template) => {
           node.removeAttribute(attributeMarker);
 
           // Find the number of dynamic attributes by checking all attribute values against the attributeMarker
-          let dynamicAttributes = filter.call(node.attributes, attribute => attribute.value === attributeMarker).length;
-
-          // If the node has the 'style' attribute, test against IEStyleMarker to check if the attribute is dynamic
-          if (node.getAttribute('style') === IEStyleMarker) {
-            dynamicAttributes += 1;
-          }
+          const dynamicAttributes = [...node.attributes].filter(attribute => attribute.value === attributeMarker).length;
 
           for (let i = 0; i < dynamicAttributes; i++) {
             // Find the name of this AttributePart using the lastAttributeNameRegex on the string before this part
@@ -76,7 +70,7 @@ export const findParts = (strings, template) => {
       const children = node.childNodes;
       const length = children.length;
       for (let i = 0; i < length; i++) {
-        recursiveSearch(children[i], path.concat([i]));
+        recursiveSearch(children[i], [...path, i]);
       }
     }
   };

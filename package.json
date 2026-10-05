@@ -2,10 +2,10 @@
   "name": "lite-html",
   "version": "0.2.4",
   "description": "A re-implementation of lit-html",
-  "main": "dist/lite-html.js",
-  "module": "dist/lite-html.js",
+  "main": "src/lite-html.js",
   "unpkg": "dist/lite-html.min.js",
   "files": [
+    "src",
     "dist"
   ],
   "repository": {
@@ -35,8 +35,7 @@
   "homepage": "https://github.com/ruphin/lite-html",
   "type": "module",
   "exports": {
-    ".": "./dist/lite-html.js",
-    "./minified": "./dist/lite-html.min.js"
+    ".": "./src/lite-html.js"
   },
   "engines": {
     "node": ">=20"

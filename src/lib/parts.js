@@ -28,7 +28,7 @@ import { moveNodes } from './dom.js';
 import { isDirective } from './directive.js';
 
 export const isSerializable = value => typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
-export const isIterable = nonPrimitive => Array.isArray(nonPrimitive) || nonPrimitive[Symbol.iterator];
+export const isIterable = nonPrimitive => nonPrimitive[Symbol.iterator];
 
 // A flag that signals that no render should happen
 export const noChange = {};
@@ -47,9 +47,9 @@ export class NodePart {
     this.node = node || emptyNode;
     this.value = noChange;
 
-    this.parentNode = parent || (node && node.parentNode);
-    this.beforeNode = before || (node && node.previousSibling);
-    this.afterNode = after || (node && node.nextSibling);
+    this.parentNode = parent || node?.parentNode;
+    this.beforeNode = before || node?.previousSibling;
+    this.afterNode = after || node?.nextSibling;
   }
 
   render(value) {
@@ -106,7 +106,7 @@ export class NodePart {
    * If not, create a new TemplateInstance
    */
   _renderTemplateResult(templateResult) {
-    this.templateInstances = this.templateInstances || new Map();
+    this.templateInstances ??= new Map();
     let instance = this.templateInstances.get(templateResult.template);
     if (!instance) {
       instance = new TemplateInstance(templateResult.template, this.parentNode, this.beforeNode, this.afterNode);
@@ -220,17 +220,27 @@ export class AttributePart {
     this.node = node;
     switch (attribute[0]) {
       case '.':
+        this.type = 'property';
         this._render = this._renderProperty;
+        break;
       case '?':
-        this._render = this._render || this._renderBoolean;
+        this.type = 'boolean';
+        this._render = this._renderBoolean;
+        break;
       case '@':
-        this._render = this._render || this._renderEvent;
-        this.node.removeAttribute(attribute);
-        this.name = attribute.slice(1);
+        this.type = 'event';
+        this._render = this._renderEvent;
         break;
       default:
+        this.type = 'attribute';
         this._render = this._renderAttribute;
-        this.name = attribute;
+    }
+    // Prefixed attributes are not real attributes, so remove them from the node
+    if (this.type === 'attribute') {
+      this.name = attribute;
+    } else {
+      this.node.removeAttribute(attribute);
+      this.name = attribute.slice(1);
     }
   }
 

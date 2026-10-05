@@ -7,14 +7,10 @@ export default defineConfig({
     lib: {
       entry: 'src/lite-html.js',
       formats: ['es'],
+      fileName: () => 'lite-html.min.js',
     },
-    sourcemap: true,
-    minify: false,
     rolldownOptions: {
-      output: [
-        { entryFileNames: 'lite-html.js' },
-        { entryFileNames: 'lite-html.min.js', minify: true, comments: false, postBanner: license },
-      ],
+      output: { minify: true, comments: false, postBanner: license },
     },
   },
   test: {

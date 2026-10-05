@@ -24,23 +24,13 @@
  */
 
 /**
- * Move nodes from to a new parent, or remove them from the old parent if no new parent is given
+ * Move the nodes between `previous` and `after` to a new parent, or remove them if no new parent is given
  */
-export const moveNodes = (oldParent, previous = null, after = null, newParent, before) => {
-  let nodeToMove = previous ? previous.nextSibling : oldParent.firstChild;
-  if (nodeToMove !== null) {
-    // If the new Parent is a Node, we move the nodes instead of removing them
-    let move;
-    if (newParent instanceof Node) {
-      move = () => newParent.insertBefore(nodeToMove, before);
-    } else {
-      move = () => oldParent.removeChild(nodeToMove);
-    }
-    let nextNode;
-    while (nodeToMove !== after) {
-      nextNode = nodeToMove.nextSibling;
-      move(nodeToMove);
-      nodeToMove = nextNode;
-    }
+export const moveNodes = (oldParent, previous = null, after = null, newParent) => {
+  let node = previous ? previous.nextSibling : oldParent.firstChild;
+  while (node && node !== after) {
+    const next = node.nextSibling;
+    newParent ? newParent.append(node) : node.remove();
+    node = next;
   }
 };

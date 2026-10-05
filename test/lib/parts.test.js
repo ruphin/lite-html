@@ -92,15 +92,19 @@ describe('parts', () => {
       expect(part.name).to.equal('a');
     });
 
-    it(`uses the correct render function`, () => {
+    it(`sets the type and uses the correct render function`, () => {
       const node = document.createElement('div');
       let part = new AttributePart({ node, attribute: 'a' });
+      expect(part.type).to.equal('attribute');
       expect(part._render === part._renderAttribute).to.be.true;
       part = new AttributePart({ node, attribute: '.a' });
+      expect(part.type).to.equal('property');
       expect(part._render === part._renderProperty).to.be.true;
       part = new AttributePart({ node, attribute: '?a' });
+      expect(part.type).to.equal('boolean');
       expect(part._render === part._renderBoolean).to.be.true;
       part = new AttributePart({ node, attribute: '@a' });
+      expect(part.type).to.equal('event');
       expect(part._render === part._renderEvent).to.be.true;
     });
 

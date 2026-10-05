@@ -23,7 +23,7 @@
  * SOFTWARE.
  */
 
-import { marker, attributeMarker, commentMarker, nodeMarker, failMarker, IEStyleMarker } from '../../src/lib/markers.js';
+import { marker, attributeMarker, commentMarker, nodeMarker, failMarker } from '../../src/lib/markers.js';
 
 import { describe, it, expect } from 'vitest';
 
@@ -60,19 +60,6 @@ describe('markers', () => {
   });
 
   describe('attributeMarker', () => {
-    it(`should be a CSS font-family definition`, () => {
-      expect(attributeMarker.slice(0, 12) === 'font-family:').to.be.true;
-    });
-    it(`should contain the random marker`, () => {
-      expect(attributeMarker.indexOf(marker)).to.be.above(0);
-    });
-  });
-
-  describe('IEStyleMarker', () => {
-    it(`should be an IE11 font-family definition`, () => {
-      const IEStyleRegex = /^font-family: [a-z0-9]+;$/;
-      expect(IEStyleMarker.match(IEStyleRegex)).to.not.be.null;
-    });
     it(`should contain the random marker`, () => {
       expect(attributeMarker.indexOf(marker)).to.be.above(0);
     });

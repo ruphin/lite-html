@@ -41,10 +41,11 @@ export const commentContext = {};
 export const nodeContext = {};
 export const unchangedContext = {};
 
-const markers = new Map();
-markers.set(attributeContext, attributeMarkerTag);
-markers.set(commentContext, commentMarkerTag);
-markers.set(nodeContext, nodeMarkerTag);
+const markers = new Map([
+  [attributeContext, attributeMarkerTag],
+  [commentContext, commentMarkerTag],
+  [nodeContext, nodeMarkerTag],
+]);
 
 export const parseContext = string => {
   const openComment = string.lastIndexOf('<!--');

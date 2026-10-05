@@ -29,7 +29,6 @@ const resolvedPromises = new WeakMap();
 
 export const until = (promise, defaultContent) =>
   directive(part => {
-    resolvedPromises.get(promise);
     if (!resolvedPromises.has(promise)) {
       promise.then(value => resolvedPromises.set(promise, value));
       part.render(defaultContent);
