@@ -29,10 +29,10 @@
 export const createMarker = () => document.createComment('');
 
 /**
- * Move the nodes between `previous` and `after` to a new parent, or remove them if no new parent is given
+ * Move the nodes between `before` and `after` to a new parent, or remove them if no new parent is given
  */
-export const moveNodes = (previous, after, newParent) => {
-  let node = previous.nextSibling;
+export const moveNodes = (before, after, newParent) => {
+  let node = before.nextSibling;
   while (node && node !== after) {
     const next = node.nextSibling;
     newParent ? newParent.append(node) : node.remove();
