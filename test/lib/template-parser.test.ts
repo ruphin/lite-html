@@ -13,7 +13,7 @@ import {
 import { attributeMarker, commentMarker, nodeMarker, failMarker } from '../../src/lib/markers.js';
 
 import { describe, it, expect } from 'vitest';
-const html = strings => strings;
+const html = (strings: TemplateStringsArray, ..._values: unknown[]) => strings;
 
 describe('templateParser', () => {
   describe('parseContext', () => {
@@ -168,13 +168,13 @@ describe('templateParser', () => {
 
   describe('buildTemplate', () => {
     it(`injects a commentNode for node parts`, () => {
-      expect(buildTemplate(html`${0}`).content.firstChild.nodeType).to.equal(8);
-      expect(buildTemplate(html`<div>${0}</div>`).content.firstChild.firstChild.nodeType).to.equal(8);
+      expect(buildTemplate(html`${0}`).content.firstChild!.nodeType).to.equal(8);
+      expect(buildTemplate(html`<div>${0}</div>`).content.firstChild!.firstChild!.nodeType).to.equal(8);
     });
 
     it(`the injected commentNode for node parts contains the nodeMarker`, () => {
-      expect(buildTemplate(html`${0}`).content.firstChild.textContent).to.equal(nodeMarker);
-      expect(buildTemplate(html`<div>${0}</div>`).content.firstChild.firstChild.textContent).to.equal(nodeMarker);
+      expect(buildTemplate(html`${0}`).content.firstChild!.textContent).to.equal(nodeMarker);
+      expect(buildTemplate(html`<div>${0}</div>`).content.firstChild!.firstChild!.textContent).to.equal(nodeMarker);
     });
 
     it(`injects a commentNode in between comment strings`, () => {
@@ -187,12 +187,12 @@ describe('templateParser', () => {
     });
 
     it(`adds a comment after a part at the end of the template`, () => {
-      expect(buildTemplate(html`${0}`).content.lastChild.textContent).to.equal('');
-      expect(buildTemplate(html`${0}a`).content.lastChild.nodeType).to.equal(3);
+      expect(buildTemplate(html`${0}`).content.lastChild!.textContent).to.equal('');
+      expect(buildTemplate(html`${0}a`).content.lastChild!.nodeType).to.equal(3);
     });
 
     it(`does not create extra empty text nodes`, () => {
-      expect(buildTemplate(html`<div>${0}</div>`).content.childNodes[0].childNodes.length).to.equal(1);
+      expect((buildTemplate(html`<div>${0}</div>`).content.childNodes[0] as Element).childNodes.length).to.equal(1);
       expect(buildTemplate(html`${0}`).content.childNodes.length).to.equal(2);
       expect(buildTemplate(html`a${0}`).content.childNodes.length).to.equal(3);
       expect(buildTemplate(html`${0}a`).content.childNodes.length).to.equal(2);
@@ -213,31 +213,31 @@ describe('templateParser', () => {
     });
 
     it(`adds the failMarker attribute to nodes when an attribute contains the '>' character`, () => {
-      expect(buildTemplate(html`<div a=">" b=${0}></div>`).content.childNodes[0].hasAttribute(failMarker)).to.be.true;
-      expect(buildTemplate(html`<div a=">" b="${0}"></div>`).content.childNodes[0].hasAttribute(failMarker)).to.be.true;
+      expect((buildTemplate(html`<div a=">" b=${0}></div>`).content.childNodes[0] as Element).hasAttribute(failMarker)).to.be.true;
+      expect((buildTemplate(html`<div a=">" b="${0}"></div>`).content.childNodes[0] as Element).hasAttribute(failMarker)).to.be.true;
     });
 
     it(`adds the attributeMarker attribute to nodes with a dynamic attribute`, () => {
-      expect(buildTemplate(html`<div a=${0}></div>`).content.childNodes[0].hasAttribute(attributeMarker)).to.be.true;
-      expect(buildTemplate(html`<div a="1"></div>`).content.childNodes[0].hasAttribute(attributeMarker)).to.be.false;
-      expect(buildTemplate(html`<div a=${0} b=${0}></div>`).content.childNodes[0].hasAttribute(attributeMarker)).to.be.true;
-      expect(buildTemplate(html`<div a="1" b=${0}></div>`).content.childNodes[0].hasAttribute(attributeMarker)).to.be.true;
+      expect((buildTemplate(html`<div a=${0}></div>`).content.childNodes[0] as Element).hasAttribute(attributeMarker)).to.be.true;
+      expect((buildTemplate(html`<div a="1"></div>`).content.childNodes[0] as Element).hasAttribute(attributeMarker)).to.be.false;
+      expect((buildTemplate(html`<div a=${0} b=${0}></div>`).content.childNodes[0] as Element).hasAttribute(attributeMarker)).to.be.true;
+      expect((buildTemplate(html`<div a="1" b=${0}></div>`).content.childNodes[0] as Element).hasAttribute(attributeMarker)).to.be.true;
     });
 
     it(`assigns the attributeMarker value to dynamic attributes `, () => {
-      expect(buildTemplate(html`<div a=${0}></div>`).content.childNodes[0].getAttribute('a')).to.be.equal(attributeMarker);
-      expect(buildTemplate(html`<div a=${0} b="1"></div>`).content.childNodes[0].getAttribute('a')).to.be.equal(attributeMarker);
-      expect(buildTemplate(html`<div a="1" b=${0}></div>`).content.childNodes[0].getAttribute('b')).to.be.equal(attributeMarker);
-      expect(buildTemplate(html`<div a=${0} b="1" c="1"></div>`).content.childNodes[0].getAttribute('a')).to.be.equal(attributeMarker);
-      expect(buildTemplate(html`<div a=${0} b=${0} c="1"></div>`).content.childNodes[0].getAttribute('a')).to.be.equal(attributeMarker);
-      expect(buildTemplate(html`<div a=${0} b=${0} c="1"></div>`).content.childNodes[0].getAttribute('b')).to.be.equal(attributeMarker);
-      expect(buildTemplate(html`<div a=${0} b="1" c=${0}></div>`).content.childNodes[0].getAttribute('a')).to.be.equal(attributeMarker);
-      expect(buildTemplate(html`<div a=${0} b="1" c=${0}></div>`).content.childNodes[0].getAttribute('c')).to.be.equal(attributeMarker);
-      expect(buildTemplate(html`<div a="1" b=${0} c=${0}></div>`).content.childNodes[0].getAttribute('b')).to.be.equal(attributeMarker);
-      expect(buildTemplate(html`<div a="1" b=${0} c=${0}></div>`).content.childNodes[0].getAttribute('c')).to.be.equal(attributeMarker);
-      expect(buildTemplate(html`<div a=${0} b=${0} c=${0}></div>`).content.childNodes[0].getAttribute('a')).to.be.equal(attributeMarker);
-      expect(buildTemplate(html`<div a=${0} b=${0} c=${0}></div>`).content.childNodes[0].getAttribute('b')).to.be.equal(attributeMarker);
-      expect(buildTemplate(html`<div a=${0} b=${0} c=${0}></div>`).content.childNodes[0].getAttribute('c')).to.be.equal(attributeMarker);
+      expect((buildTemplate(html`<div a=${0}></div>`).content.childNodes[0] as Element).getAttribute('a')).to.be.equal(attributeMarker);
+      expect((buildTemplate(html`<div a=${0} b="1"></div>`).content.childNodes[0] as Element).getAttribute('a')).to.be.equal(attributeMarker);
+      expect((buildTemplate(html`<div a="1" b=${0}></div>`).content.childNodes[0] as Element).getAttribute('b')).to.be.equal(attributeMarker);
+      expect((buildTemplate(html`<div a=${0} b="1" c="1"></div>`).content.childNodes[0] as Element).getAttribute('a')).to.be.equal(attributeMarker);
+      expect((buildTemplate(html`<div a=${0} b=${0} c="1"></div>`).content.childNodes[0] as Element).getAttribute('a')).to.be.equal(attributeMarker);
+      expect((buildTemplate(html`<div a=${0} b=${0} c="1"></div>`).content.childNodes[0] as Element).getAttribute('b')).to.be.equal(attributeMarker);
+      expect((buildTemplate(html`<div a=${0} b="1" c=${0}></div>`).content.childNodes[0] as Element).getAttribute('a')).to.be.equal(attributeMarker);
+      expect((buildTemplate(html`<div a=${0} b="1" c=${0}></div>`).content.childNodes[0] as Element).getAttribute('c')).to.be.equal(attributeMarker);
+      expect((buildTemplate(html`<div a="1" b=${0} c=${0}></div>`).content.childNodes[0] as Element).getAttribute('b')).to.be.equal(attributeMarker);
+      expect((buildTemplate(html`<div a="1" b=${0} c=${0}></div>`).content.childNodes[0] as Element).getAttribute('c')).to.be.equal(attributeMarker);
+      expect((buildTemplate(html`<div a=${0} b=${0} c=${0}></div>`).content.childNodes[0] as Element).getAttribute('a')).to.be.equal(attributeMarker);
+      expect((buildTemplate(html`<div a=${0} b=${0} c=${0}></div>`).content.childNodes[0] as Element).getAttribute('b')).to.be.equal(attributeMarker);
+      expect((buildTemplate(html`<div a=${0} b=${0} c=${0}></div>`).content.childNodes[0] as Element).getAttribute('c')).to.be.equal(attributeMarker);
     });
   });
 });

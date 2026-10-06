@@ -1,12 +1,13 @@
-import { directive } from '../lib/directive.js';
+import { directive, type Directive } from '../lib/directive.js';
+import type { Part } from '../lib/parts.js';
 
 // The dependencies that were last rendered in each part
-const previousDependencies = new WeakMap();
+const previousDependencies = new WeakMap<Part, readonly unknown[]>();
 
 /**
  * Render the result of `valueFn`, but only call it again when one of the dependencies changes identity
  */
-export const guard = (dependencies, valueFn) =>
+export const guard = (dependencies: readonly unknown[], valueFn: () => unknown): Directive =>
   directive(part => {
     const previous = previousDependencies.get(part);
     if (!previous || previous.length !== dependencies.length || dependencies.some((value, i) => value !== previous[i])) {

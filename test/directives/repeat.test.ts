@@ -5,8 +5,8 @@ import { innerHTML } from '../helpers.js';
 import { describe, it, beforeEach, expect } from 'vitest';
 
 describe('repeat', () => {
-  let container;
-  const keyed = items => html`<ul>${repeat(items, item => item, item => html`<li>${item}</li>`)}</ul>`;
+  let container: HTMLDivElement;
+  const keyed = (items: Iterable<number>) => html`<ul>${repeat(items, item => item, item => html`<li>${item}</li>`)}</ul>`;
   const listItems = () => [...container.querySelectorAll('li')];
   const text = () => listItems().map(li => li.textContent).join('');
 
@@ -59,7 +59,7 @@ describe('repeat', () => {
   });
 
   it('keeps surrounding content in place', () => {
-    const template = items => html`<ul><li>a</li>${repeat(items, item => item, item => html`<li>${item}</li>`)}<li>z</li></ul>`;
+    const template = (items: Iterable<number>) => html`<ul><li>a</li>${repeat(items, item => item, item => html`<li>${item}</li>`)}<li>z</li></ul>`;
     render(template([1, 2]), container);
     render(template([2, 3, 1]), container);
     expect(text()).to.equal('a231z');
@@ -68,7 +68,7 @@ describe('repeat', () => {
   });
 
   it('works when alternated with other renders', () => {
-    const template = value => html`<ul>${value}</ul>`;
+    const template = (value: unknown) => html`<ul>${value}</ul>`;
     render(template(repeat([1, 2], item => item, item => html`<li>${item}</li>`)), container);
     render(template('text'), container);
     expect(innerHTML(container)).to.equal('<ul>text</ul>');

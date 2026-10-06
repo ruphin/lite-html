@@ -1,10 +1,12 @@
 import { html, render } from '../src/lite-html.js';
 
-let todos = [];
-const container = document.getElementById('container');
+type Todo = { id: number; text: string };
+
+let todos: Todo[] = [];
+const container = document.getElementById('container')!;
 
 const add = () => {
-  const input = document.getElementById('input');
+  const input = document.getElementById('input') as HTMLInputElement;
   if (input.value) {
     todos.push({ id: Math.random(), text: input.value });
     input.value = '';
@@ -12,8 +14,8 @@ const add = () => {
   }
 };
 
-const remove = e => {
-  const removedTodo = e.target.parentNode.todo;
+const remove = (e: Event) => {
+  const removedTodo = ((e.target as HTMLElement).parentNode as HTMLElement & { todo: number }).todo;
   todos = todos.filter(todo => todo.id !== removedTodo);
   render(template(), container);
 };

@@ -5,7 +5,7 @@ import { innerHTML } from '../helpers.js';
 import { describe, it, beforeEach, expect } from 'vitest';
 
 describe('unsafeHTML', () => {
-  let container;
+  let container: HTMLDivElement;
 
   beforeEach(() => {
     container = document.createElement('div');
@@ -27,7 +27,7 @@ describe('unsafeHTML', () => {
   });
 
   it('renders strings that are names of Object properties', () => {
-    const template = string => html`<p>${unsafeHTML(string)}</p>`;
+    const template = (string: string) => html`<p>${unsafeHTML(string)}</p>`;
     render(template('constructor'), container);
     expect(innerHTML(container)).to.equal('<p>constructor</p>');
     render(template('__proto__'), container);
@@ -35,7 +35,7 @@ describe('unsafeHTML', () => {
   });
 
   it('does not render again when the string is unchanged', () => {
-    const template = string => html`<p>${unsafeHTML(string)}</p>`;
+    const template = (string: string) => html`<p>${unsafeHTML(string)}</p>`;
     render(template('<span></span>'), container);
     const span = container.querySelector('span');
     render(template('<span></span>'), container);

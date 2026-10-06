@@ -4,8 +4,9 @@ import { when } from '../../src/directives/when.js';
 import { directive } from '../../src/lib/directive.js';
 import { outerHTML } from '../helpers.js';
 
-const html = (strings, ...values) => new TemplateResult(strings, values);
-const fragmentString = documentFragment => [].map.call(documentFragment.childNodes, node => node.outerHTML).join('');
+const html = (strings: TemplateStringsArray, ...values: unknown[]) => new TemplateResult(strings, values);
+const fragmentString = (documentFragment: DocumentFragment) =>
+  [...documentFragment.childNodes].map(node => (node as Element).outerHTML).join('');
 
 import { describe, it, expect } from 'vitest';
 
@@ -95,7 +96,7 @@ describe('parts', () => {
     });
 
     it(`renders properties`, () => {
-      const node = document.createElement('div');
+      const node = document.createElement('div') as HTMLDivElement & { a?: unknown };
       let part = new AttributePart({ node, attribute: '.a' });
       part.render('one');
       expect(node.a).to.equal('one');
@@ -193,8 +194,8 @@ describe('parts', () => {
     it(`calls event handlers with the node as 'this'`, () => {
       const node = document.createElement('div');
       let part = new AttributePart({ node, attribute: '@click' });
-      let context;
-      part.render(function() {
+      let context: unknown;
+      part.render(function (this: Element) {
         context = this;
       });
       node.click();
@@ -230,13 +231,13 @@ describe('parts', () => {
   describe('CommentPart', () => {
     it(`remembers the node it belongs to`, () => {
       const node = document.createComment('test');
-      let part = new CommentPart({ node, attribute: '' });
+      let part = new CommentPart({ node });
       expect(part.node === node).to.be.true;
     });
 
     it(`renders comments`, () => {
       const node = document.createComment('test');
-      let part = new CommentPart({ node, attribute: '' });
+      let part = new CommentPart({ node });
       expect(node.textContent).to.equal('test');
       part.render('one');
       expect(node.textContent).to.equal('one');
@@ -370,7 +371,7 @@ describe('parts', () => {
           const templateResult = html`<ul><li></li></ul>`;
           part._renderTemplateResult(templateResult);
 
-          const templateInstance = part.instance;
+          const templateInstance = part.instance!;
           expect(fragmentString(templateInstance.fragment)).to.equal('');
           expect(outerHTML(parent)).to.equal('<div><span></span><!--marker--><ul><li></li></ul><span></span></div>');
           part.clear();
@@ -383,7 +384,7 @@ describe('parts', () => {
           const templateResult = html`<ul><li></li></ul>`;
           part._renderTemplateResult(templateResult);
 
-          const templateInstance = part.instance;
+          const templateInstance = part.instance!;
           expect(fragmentString(templateInstance.fragment)).to.equal('');
           expect(outerHTML(parent)).to.equal('<div><ul><li></li></ul></div>');
           part.clear();
@@ -469,11 +470,11 @@ describe('parts', () => {
           const { node, parent } = setupNodes();
           const part = new NodePart({ node });
           const nodeOne = document.createElement('div');
-          nodeOne.setAttribute('node', 1);
+          nodeOne.setAttribute('node', '1');
           part._renderNode(nodeOne);
           expect(outerHTML(parent)).to.equal('<div><span></span><!--marker--><div node="1"></div><span></span></div>');
           const nodeTwo = document.createElement('div');
-          nodeTwo.setAttribute('node', 2);
+          nodeTwo.setAttribute('node', '2');
           part._renderNode(nodeTwo);
           expect(outerHTML(parent)).to.equal('<div><span></span><!--marker--><div node="2"></div><span></span></div>');
         }
@@ -481,11 +482,11 @@ describe('parts', () => {
           const { node, parent } = setupRoot();
           const part = new NodePart({ node });
           const nodeOne = document.createElement('div');
-          nodeOne.setAttribute('node', 1);
+          nodeOne.setAttribute('node', '1');
           part._renderNode(nodeOne);
           expect(outerHTML(parent)).to.equal('<div><div node="1"></div></div>');
           const nodeTwo = document.createElement('div');
-          nodeTwo.setAttribute('node', 2);
+          nodeTwo.setAttribute('node', '2');
           part._renderNode(nodeTwo);
           expect(outerHTML(parent)).to.equal('<div><div node="2"></div></div>');
         }
@@ -602,7 +603,7 @@ describe('parts', () => {
         {
           const { node, parent } = setupNodes();
           const part = new NodePart({ node });
-          const array = ['hello', 1];
+          const array: unknown[] = ['hello', 1];
           part._renderIterable(array);
           expect(outerHTML(parent)).to.equal('<div><span></span><!--marker-->hello1<span></span></div>');
           array.unshift(true);
@@ -612,7 +613,7 @@ describe('parts', () => {
         {
           const { node, parent } = setupRoot();
           const part = new NodePart({ node });
-          const array = ['hello', 1];
+          const array: unknown[] = ['hello', 1];
           part._renderIterable(array);
           expect(outerHTML(parent)).to.equal('<div>hello1</div>');
           array.unshift(true);
@@ -647,7 +648,7 @@ describe('parts', () => {
       it(`does not break when the parent is normalized`, () => {
         const { node, parent } = setupNodes();
         const part = new NodePart({ node });
-        const template = array => array.map(i => html`<p>${i}</p>`);
+        const template = (array: number[]) => array.map(i => html`<p>${i}</p>`);
         part.render(template([1, 2]));
         parent.normalize();
         part.render(template([1]));
@@ -853,9 +854,9 @@ describe('parts', () => {
           const part = new NodePart({ node });
           const promise = Promise.resolve('result');
           let renderCount = 0;
-          let previousValue;
+          let previousValue: unknown;
           let sameValue = false;
-          part.render = value => {
+          part.render = (value: unknown) => {
             renderCount++;
             sameValue = value === previousValue;
             previousValue = value;
@@ -905,14 +906,14 @@ describe('parts', () => {
         {
           const { node, parent } = setupNodes();
           const part = new NodePart({ node });
-          const templateResult = value => html`<p>${value}</p>`;
+          const templateResult = (value: unknown) => html`<p>${value}</p>`;
           part._renderTemplateResult(templateResult(1));
           expect(outerHTML(parent)).to.equal('<div><span></span><!--marker--><p>1</p><span></span></div>');
         }
         {
           const { node, parent } = setupRoot();
           const part = new NodePart({ node });
-          const templateResult = value => html`<p>${value}</p>`;
+          const templateResult = (value: unknown) => html`<p>${value}</p>`;
           part._renderTemplateResult(templateResult(1));
           expect(outerHTML(parent)).to.equal('<div><p>1</p></div>');
         }
@@ -922,14 +923,14 @@ describe('parts', () => {
         {
           const { node, parent } = setupNodes();
           const part = new NodePart({ node });
-          const templateResult = value => html`<p>${value}</p>`;
+          const templateResult = (value: unknown) => html`<p>${value}</p>`;
           part._renderTemplateResult(templateResult(html`<i>${1}</i>`));
           expect(outerHTML(parent)).to.equal('<div><span></span><!--marker--><p><i>1</i></p><span></span></div>');
         }
         {
           const { node, parent } = setupRoot();
           const part = new NodePart({ node });
-          const templateResult = value => html`<p>${value}</p>`;
+          const templateResult = (value: unknown) => html`<p>${value}</p>`;
           part._renderTemplateResult(templateResult(html`<i>${1}</i>`));
           expect(outerHTML(parent)).to.equal('<div><p><i>1</i></p></div>');
         }
@@ -939,14 +940,14 @@ describe('parts', () => {
         {
           const { node, parent } = setupNodes();
           const part = new NodePart({ node });
-          const templateResult = value => html`${value}`;
+          const templateResult = (value: unknown) => html`${value}`;
           part._renderTemplateResult(templateResult(html`<i>${1}</i>`));
           expect(outerHTML(parent)).to.equal('<div><span></span><!--marker--><i>1</i><span></span></div>');
         }
         {
           const { node, parent } = setupRoot();
           const part = new NodePart({ node });
-          const templateResult = value => html`${value}`;
+          const templateResult = (value: unknown) => html`${value}`;
           part._renderTemplateResult(templateResult(html`<i>${1}</i>`));
           expect(outerHTML(parent)).to.equal('<div><i>1</i></div>');
         }
@@ -956,8 +957,8 @@ describe('parts', () => {
         {
           const { node, parent } = setupNodes();
           const part = new NodePart({ node });
-          const templateResult = value => html`${value}`;
-          const templatePartial = value => html`<i>${value}</i>`;
+          const templateResult = (value: unknown) => html`${value}`;
+          const templatePartial = (value: unknown) => html`<i>${value}</i>`;
           part._renderTemplateResult(templateResult(templatePartial(1)));
           expect(outerHTML(parent)).to.equal('<div><span></span><!--marker--><i>1</i><span></span></div>');
           part._renderTemplateResult(templateResult(templatePartial(2)));
@@ -1005,9 +1006,9 @@ describe('parts', () => {
         {
           const { node, parent } = setupNodes();
           const part = new NodePart({ node });
-          const template = value => html`<p>${value}</p>`;
+          const template = (value: unknown) => html`<p>${value}</p>`;
           part._renderTemplateResult(template(1));
-          parent.querySelector('p').id = 'a';
+          parent.querySelector('p')!.id = 'a';
           expect(outerHTML(parent)).to.equal('<div><span></span><!--marker--><p id="a">1</p><span></span></div>');
           part._renderTemplateResult(template(2));
           expect(outerHTML(parent)).to.equal('<div><span></span><!--marker--><p id="a">2</p><span></span></div>');
@@ -1015,9 +1016,9 @@ describe('parts', () => {
         {
           const { node, parent } = setupRoot();
           const part = new NodePart({ node });
-          const template = value => html`<p>${value}</p>`;
+          const template = (value: unknown) => html`<p>${value}</p>`;
           part._renderTemplateResult(template(1));
-          parent.querySelector('p').id = 'a';
+          parent.querySelector('p')!.id = 'a';
           expect(outerHTML(parent)).to.equal('<div><p id="a">1</p></div>');
           part._renderTemplateResult(template(2));
           expect(outerHTML(parent)).to.equal('<div><p id="a">2</p></div>');
@@ -1028,10 +1029,10 @@ describe('parts', () => {
         {
           const { node, parent } = setupNodes();
           const part = new NodePart({ node });
-          const one = value => html`<p>${value}</p>`;
-          const two = value => html`<i>${value}</i>`;
+          const one = (value: unknown) => html`<p>${value}</p>`;
+          const two = (value: unknown) => html`<i>${value}</i>`;
           part._renderTemplateResult(one(1));
-          parent.querySelector('p').id = 'a';
+          parent.querySelector('p')!.id = 'a';
           expect(outerHTML(parent)).to.equal('<div><span></span><!--marker--><p id="a">1</p><span></span></div>');
           part._renderTemplateResult(two(2));
           expect(outerHTML(parent)).to.equal('<div><span></span><!--marker--><i>2</i><span></span></div>');
@@ -1041,10 +1042,10 @@ describe('parts', () => {
         {
           const { node, parent } = setupRoot();
           const part = new NodePart({ node });
-          const one = value => html`<p>${value}</p>`;
-          const two = value => html`<i>${value}</i>`;
+          const one = (value: unknown) => html`<p>${value}</p>`;
+          const two = (value: unknown) => html`<i>${value}</i>`;
           part._renderTemplateResult(one(1));
-          parent.querySelector('p').id = 'a';
+          parent.querySelector('p')!.id = 'a';
           expect(outerHTML(parent)).to.equal('<div><p id="a">1</p></div>');
           part._renderTemplateResult(two(2));
           expect(outerHTML(parent)).to.equal('<div><i>2</i></div>');
@@ -1061,7 +1062,7 @@ describe('parts', () => {
         part.render('text');
         expect(part.instance).to.be.undefined;
         part.render([1, 2]);
-        expect(part.iterableParts.length).to.equal(2);
+        expect(part.iterableParts!.length).to.equal(2);
         part.render('text');
         expect(part.iterableParts).to.be.undefined;
       });
@@ -1069,8 +1070,8 @@ describe('parts', () => {
       it(`renders the values before the template is inserted`, () => {
         const { node, parent } = setupNodes();
         const part = new NodePart({ node });
-        let rootNode;
-        const probe = part => {
+        let rootNode: Node | undefined;
+        const probe = (part: AttributePart) => {
           rootNode = part.node.getRootNode();
         };
         part.render(html`<p><i a=${directive(probe)}></i></p>`);
@@ -1081,7 +1082,7 @@ describe('parts', () => {
       it(`correctly clears parts that are next to each other`, () => {
         const { node, parent } = setupNodes();
         const part = new NodePart({ node });
-        const template = (a, b) => html`<p>${a}${b}</p>${a}${b}`;
+        const template = (a: unknown, b: unknown) => html`<p>${a}${b}</p>${a}${b}`;
         part.render(template('a', 'b'));
         expect(outerHTML(parent)).to.equal('<div><span></span><!--marker--><p>ab</p>ab<span></span></div>');
         part.render(template('a', null));

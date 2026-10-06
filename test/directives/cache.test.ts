@@ -5,10 +5,10 @@ import { innerHTML } from '../helpers.js';
 import { describe, it, beforeEach, expect } from 'vitest';
 
 describe('cache', () => {
-  let container;
-  const one = value => html`<p>${value}</p>`;
-  const two = value => html`<i>${value}</i>`;
-  const template = value => html`<div>${cache(value)}</div>`;
+  let container: HTMLDivElement;
+  const one = (value: unknown) => html`<p>${value}</p>`;
+  const two = (value: unknown) => html`<i>${value}</i>`;
+  const template = (value: unknown) => html`<div>${cache(value)}</div>`;
 
   beforeEach(() => {
     container = document.createElement('div');
@@ -47,7 +47,7 @@ describe('cache', () => {
   });
 
   it('does not keep the DOM of templates without the directive', () => {
-    const uncached = value => html`<div>${value}</div>`;
+    const uncached = (value: unknown) => html`<div>${value}</div>`;
     render(uncached(one(1)), container);
     const p = container.querySelector('p');
     render(uncached(two(2)), container);

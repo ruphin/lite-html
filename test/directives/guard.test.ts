@@ -5,9 +5,9 @@ import { innerHTML } from '../helpers.js';
 import { describe, it, beforeEach, expect } from 'vitest';
 
 describe('guard', () => {
-  let container;
-  let calls;
-  const template = (dependencies, value) =>
+  let container: HTMLDivElement;
+  let calls = 0;
+  const template = (dependencies: unknown[], value: unknown) =>
     html`<p title=${guard(dependencies, () => value)}>${guard(dependencies, () => (calls++, value))}</p>`;
 
   beforeEach(() => {

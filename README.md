@@ -232,14 +232,15 @@ Lite-html has the same core API as lit-html, but it aims to be more lightweight 
 
 ## Development
 
-Requires Node.js 20 or later.
+Requires Node.js 20 or later. The source is written in TypeScript.
 
 ```
 npm install
 npm run dev         # Serve the demo with Vite
 npm test            # Run the test suite once with Vitest
 npm run test:watch  # Run tests in watch mode
-npm run build       # Build the minified bundle served by unpkg
+npm run typecheck   # Type-check the source, tests, and demo
+npm run build       # Build the ES module, the minified bundle served by unpkg, and the type declarations
 ```
 
 ## License

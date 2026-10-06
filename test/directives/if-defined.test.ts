@@ -5,7 +5,7 @@ import { innerHTML } from '../helpers.js';
 import { describe, it, beforeEach, expect } from 'vitest';
 
 describe('ifDefined', () => {
-  let container;
+  let container: HTMLDivElement;
 
   beforeEach(() => {
     container = document.createElement('div');
@@ -19,7 +19,7 @@ describe('ifDefined', () => {
   });
 
   it('removes the attribute when the value is undefined or null', () => {
-    const template = value => html`<p a=${ifDefined(value)}></p>`;
+    const template = (value: unknown) => html`<p a=${ifDefined(value)}></p>`;
     render(template('value'), container);
     render(template(undefined), container);
     expect(innerHTML(container)).to.equal('<p></p>');
@@ -29,7 +29,7 @@ describe('ifDefined', () => {
   });
 
   it('sets the attribute again after it was removed', () => {
-    const template = value => html`<p a=${ifDefined(value)}></p>`;
+    const template = (value: unknown) => html`<p a=${ifDefined(value)}></p>`;
     render(template('value'), container);
     render(template(undefined), container);
     render(template('value'), container);

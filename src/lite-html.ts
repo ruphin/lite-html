@@ -9,18 +9,20 @@ import { NodePart } from './lib/parts.js';
 import { createMarker } from './lib/dom.js';
 
 export { noChange } from './lib/parts.js';
+export type { Part, NodePart, AttributePart, CommentPart } from './lib/parts.js';
+export type { TemplateResult } from './lib/templates.js';
+export type { Directive } from './lib/directive.js';
 export * from './directives/index.js';
 
 // A lookup map for NodeParts that represent the content of a render target
-const nodeParts = new WeakMap();
+const nodeParts = new WeakMap<ParentNode, NodePart>();
 
 /**
  * Tagging function to tag JavaScript template string literals as HTML
  *
- * @return {TemplateResult}
- *   The strings and values of the template string wrapped in a TemplateResult object
+ * Returns the strings and values of the template string wrapped in a TemplateResult object
  */
-export const html = (strings, ...values) => {
+export const html = (strings: TemplateStringsArray, ...values: unknown[]): TemplateResult => {
   return new TemplateResult(strings, values);
 };
 
@@ -28,23 +30,22 @@ export const html = (strings, ...values) => {
  * Tagging function to tag JavaScript template string literals as SVG
  * Use this for templates that are rendered inside an `<svg>` element
  *
- * @return {TemplateResult}
- *   The strings and values of the template string wrapped in a TemplateResult object
+ * Returns the strings and values of the template string wrapped in a TemplateResult object
  */
-export const svg = (strings, ...values) => {
+export const svg = (strings: TemplateStringsArray, ...values: unknown[]): TemplateResult => {
   return new TemplateResult(strings, values, true);
 };
 
 /**
  * Render content into a target node
  *
- * @param {any} content
+ * @param content
  *   Any content you wish to render. Usually a template string literal tagged with the `html` function
- * @param {Node} target
+ * @param target
  *   An HTML Node that you wish to render the content into.
  *   The content will become the sole content of the target node.
  */
-export const render = (content, target) => {
+export const render = (content: unknown, target: ParentNode): void => {
   // Check if the target has a NodePart that represents its content
   let part = nodeParts.get(target);
   if (!part) {

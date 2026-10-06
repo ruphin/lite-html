@@ -2,7 +2,8 @@
   "name": "lite-html",
   "version": "1.0.0",
   "description": "A re-implementation of lit-html",
-  "main": "src/lite-html.js",
+  "main": "./dist/lite-html.js",
+  "types": "./dist/lite-html.d.ts",
   "unpkg": "dist/lite-html.min.js",
   "files": [
     "src",
@@ -27,21 +28,26 @@
   },
   "scripts": {
     "dev": "vite demo",
-    "build": "vite build",
+    "build": "vite build && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepublishOnly": "npm run build && npm test"
+    "prepublishOnly": "npm run typecheck && npm run build && npm test"
   },
   "homepage": "https://github.com/ruphin/lite-html",
   "type": "module",
   "exports": {
-    ".": "./src/lite-html.js"
+    ".": {
+      "types": "./dist/lite-html.d.ts",
+      "default": "./dist/lite-html.js"
+    }
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
     "jsdom": "^30.1.2",
+    "typescript": "^7.0.2",
     "vite": "^8.3.2",
     "vitest": "^5.0.3"
   }

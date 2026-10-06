@@ -1,9 +1,11 @@
 import { buildTemplate } from '../../src/lib/template-parser.js';
-import { findParts } from '../../src/lib/node-walker.js';
+import { findParts, type PartDefinition } from '../../src/lib/node-walker.js';
 import { AttributePart, CommentPart, NodePart } from '../../src/lib/parts.js';
 
 import { describe, it, expect } from 'vitest';
-const html = strings => strings;
+const html = (strings: TemplateStringsArray, ..._values: unknown[]) => strings;
+// The attribute name of a part definition, if it is an AttributePart
+const attributeOf = (part: PartDefinition) => ('attribute' in part ? part.attribute : undefined);
 
 describe('nodeWalker', () => {
   describe('findParts', () => {
@@ -69,13 +71,13 @@ describe('nodeWalker', () => {
         </div>`;
       const template = buildTemplate(strings);
       const parts = findParts(strings, template);
-      expect(parts[0].attribute).to.equal('a');
-      expect(parts[1].attribute).to.equal('a-b');
-      expect(parts[2].attribute).to.equal('👍');
-      expect(parts[3].attribute).to.equal('(a)');
-      expect(parts[4].attribute).to.equal('[a]');
-      expect(parts[5].attribute).to.equal('a$');
-      expect(parts[6].attribute).to.equal('$a');
+      expect(attributeOf(parts[0])).to.equal('a');
+      expect(attributeOf(parts[1])).to.equal('a-b');
+      expect(attributeOf(parts[2])).to.equal('👍');
+      expect(attributeOf(parts[3])).to.equal('(a)');
+      expect(attributeOf(parts[4])).to.equal('[a]');
+      expect(attributeOf(parts[5])).to.equal('a$');
+      expect(attributeOf(parts[6])).to.equal('$a');
     });
 
     it(`Preserves prefixes in the attribute name`, () => {
@@ -87,9 +89,9 @@ describe('nodeWalker', () => {
         </div>`;
       const template = buildTemplate(strings);
       const parts = findParts(strings, template);
-      expect(parts[0].attribute).to.equal('.a');
-      expect(parts[1].attribute).to.equal('?a');
-      expect(parts[2].attribute).to.equal('@a');
+      expect(attributeOf(parts[0])).to.equal('.a');
+      expect(attributeOf(parts[1])).to.equal('?a');
+      expect(attributeOf(parts[2])).to.equal('@a');
     });
 
     it(`throws an Error when an attribute contains the '>' character`, () => {
@@ -168,22 +170,22 @@ describe('nodeWalker', () => {
         const strings = html`<div style=${''}></div>`;
         const template = buildTemplate(strings);
         const parts = findParts(strings, template);
-        expect(parts[0].attribute).to.equal('style');
+        expect(attributeOf(parts[0])).to.equal('style');
       }
       {
         const strings = html`<div a=${0} style=${''} b=${1}></div>`;
         const template = buildTemplate(strings);
         const parts = findParts(strings, template);
-        expect(parts[0].attribute).to.equal('a');
-        expect(parts[1].attribute).to.equal('style');
-        expect(parts[2].attribute).to.equal('b');
+        expect(attributeOf(parts[0])).to.equal('a');
+        expect(attributeOf(parts[1])).to.equal('style');
+        expect(attributeOf(parts[2])).to.equal('b');
       }
       {
         const strings = html`<div a=${0} style='' b=${1}></div>`;
         const template = buildTemplate(strings);
         const parts = findParts(strings, template);
-        expect(parts[0].attribute).to.equal('a');
-        expect(parts[1].attribute).to.equal('b');
+        expect(attributeOf(parts[0])).to.equal('a');
+        expect(attributeOf(parts[1])).to.equal('b');
       }
       {
         const strings = html`<div a='' a=${0} style=''></div>`;

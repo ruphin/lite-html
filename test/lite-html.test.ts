@@ -4,7 +4,7 @@ import { innerHTML } from './helpers.js';
 import { describe, it, beforeEach, expect } from 'vitest';
 
 describe('lite-html', () => {
-  let container;
+  let container: HTMLDivElement;
 
   beforeEach(() => {
     container = document.createElement('div');
@@ -20,7 +20,7 @@ describe('lite-html', () => {
     });
 
     it('updates parts that are next to each other', () => {
-      const template = (a, b) => html`${a}${b}`;
+      const template = (a: unknown, b: unknown) => html`${a}${b}`;
       render(template('a', 'b'), container);
       expect(innerHTML(container)).to.equal('ab');
       render(template(html`<b></b>`, null), container);
@@ -34,7 +34,7 @@ describe('lite-html', () => {
     });
 
     it('keeps the content after a nested template that ends with a part', () => {
-      const template = value => html`<p>${html`${value}`}<i></i></p>`;
+      const template = (value: unknown) => html`<p>${html`${value}`}<i></i></p>`;
       render(template('a'), container);
       expect(innerHTML(container)).to.equal('<p>a<i></i></p>');
       render(template(html`<b></b>`), container);
@@ -60,16 +60,16 @@ describe('lite-html', () => {
 
   describe('svg', () => {
     it('renders elements in the SVG namespace', () => {
-      const template = radius => html`<svg>${svg`<circle r=${radius}></circle>`}</svg>`;
+      const template = (radius: number) => html`<svg>${svg`<circle r=${radius}></circle>`}</svg>`;
       render(template(1), container);
       expect(innerHTML(container)).to.equal('<svg><circle r="1"></circle></svg>');
-      expect(container.querySelector('circle').namespaceURI).to.equal('http://www.w3.org/2000/svg');
+      expect(container.querySelector('circle')!.namespaceURI).to.equal('http://www.w3.org/2000/svg');
       render(template(2), container);
       expect(innerHTML(container)).to.equal('<svg><circle r="2"></circle></svg>');
     });
 
     it('renders nested templates and lists', () => {
-      const template = radii => svg`<g>${radii.map(radius => svg`<circle r=${radius}></circle>`)}</g>`;
+      const template = (radii: number[]) => svg`<g>${radii.map(radius => svg`<circle r=${radius}></circle>`)}</g>`;
       render(html`<svg>${template([1, 2])}</svg>`, container);
       expect(innerHTML(container)).to.equal('<svg><g><circle r="1"></circle><circle r="2"></circle></g></svg>');
       expect(container.querySelectorAll('circle')[1].namespaceURI).to.equal('http://www.w3.org/2000/svg');
