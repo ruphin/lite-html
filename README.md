@@ -10,43 +10,39 @@ _A modern replacement for VirtualDOM rendering engines_
 
 - **Highly Flexible:** Use expressive JavaScript templates that can render anything to HTML. Set properties and event listeners directly from the template.
 - **Extremely Performant:** Using the latest generation of rendering techniques, it easily outperforms contemporary VirtualDOM-based rendering as used in modern frontend frameworks.
-- **Lightweight:** Under 3kB total size.
+- **Lightweight:** Under 3kB minified and gzipped.
 - **API Compatible with lit-html:** Can be used as a drop-in replacement for lit-html in most projects.
 
 ## Examples
 
-#### Hello World
+### Hello World
 
 ```javascript
-const template = name => html`
-  <p>Hello ${name}</p>
-`;
+const template = (name) => html`<p>Hello ${name}</p>`;
 
 render(template('World'), document.body);
 ```
 
-#### Simple List
+### Simple List
 
 ```javascript
-const groceryList = items => html`
+const groceryList = (items) => html`
   <ul>
-    ${items.map(
-      item => html`
-      <li>
-        ${item.name} - ${item.quantity}
-      </li>
-    `
-    )}
-  </ul>`;
+    ${items.map((item) => html`<li>${item.name} - ${item.quantity}</li>`)}
+  </ul>
+`;
 
-const groceries = [{ name: 'Apples', quantity: 2 }, { name: 'Oranges', quantity: 4 }];
+const groceries = [
+  { name: 'Apples', quantity: 2 },
+  { name: 'Oranges', quantity: 4 },
+];
 
 render(groceryList(groceries), document.getElementById('groceryList'));
 ```
 
 ## Installing
 
-With NPM
+Install it with npm:
 
 ```
 npm install lite-html
@@ -58,75 +54,99 @@ Lite-html is published as an ES module. Import it from your bundler or Node proj
 import { html, render } from 'lite-html';
 ```
 
-Or load it directly from a CDN:
+Or load it dynamically for live debugging:
 
 ```javascript
-import { html, render } from 'https://unpkg.com/lite-html';
+const { html, render } = await import('https://unpkg.com/lite-html');
 ```
 
 ## API
 
-The core API consists of two components.
+The core API consists of functions that create templates, and a `render` function that renders templates into the DOM.
 
-### render(\<any>, Node)
+- [`html`](#html) and [`svg`](#svg) create templates.
+- [`render`](#rendervalue-target) renders a template, or any other renderable value, into a DOM node.
 
-The `render` function will render any type of object into the content of an HTML `Node`, usually the document body, a container element, or a shadowRoot.
+### Renderable values
 
-The first argument is the object that will be rendered. It can be one of the following:
+Lite-html can render more than templates. Each of the following values can be passed to `render`, or used as an interpreted value in the content of a template:
 
-- A `TemplateResult` (returned by the `html` tag)
-- A string, number, or boolean
-- An HTML DOM Node
-- An Array-like object
-- A Promise
+- Templates
+- Strings, numbers, and booleans
+- `null` and `undefined`
+- DOM nodes
+- Arrays and other iterables
+- Promises
 
-Any other object is coerced to a String before being rendered.
+Any other value is converted to a string. [Directives](#directives) are special values that change how something is rendered.
 
-The second argument is the `Node` that the object will be rendered into. The previous content of the `Node` will be removed.
+#### Templates
 
-Lite-html keeps empty comment nodes (`<!---->`) in the rendered content to remember where the interpreted values are. Do not remove them.
+A template describes a piece of HTML or SVG, with interpreted values for the parts that can change. Templates are the building blocks of everything you render, and they can be nested inside other templates. They are created with the [`html`](#html) and [`svg`](#svg) tags.
+
+#### Strings, numbers, and booleans
+
+These are rendered as text. They are never parsed as HTML. A boolean is rendered as the text `true` or `false`.
+
+#### null and undefined
+
+These render nothing.
+
+#### DOM nodes
+
+A DOM node is inserted as it is. A node can only be in one place in the document, so a node that is already in the document is moved. For a `DocumentFragment`, its child nodes are inserted.
+
+#### Arrays and other iterables
+
+Each item is rendered in order. An item can be any renderable value, including a template or another array.
+
+When the list is rendered again, items are matched by position: the first item updates the DOM of the previous first item, and so on. Use the `repeat` directive with a key function to keep the DOM of each item when the order of the list changes.
+
+#### Promises
+
+The content stays as it is until the promise resolves, then the resolved value is rendered. Use the `until` directive to show placeholder content while the promise is pending.
+
+#### Other values
+
+Any other value is converted to a string with `String()` and rendered as text.
 
 ### html
 
-The `html` is a [JavaScript template tag](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals#Tagged_templates) that allows creation of flexible templates which will be interpreted as HTML. To use the tag, prepend it to any [JavaScript template literal](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals).
+`html` is a [JavaScript template tag](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals#tagged_templates) that creates a template. To use the tag, prepend it to any [JavaScript template literal](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals).
 
 ```javascript
 const template = () => html`<p>Hello World</p>`;
 ```
 
-The contents of the template will be parsed as HTML. The flexibility comes from interpreted values that can be inserted into these templates.
+The contents of the template are parsed as HTML. Templates become dynamic through the interpreted values that can be inserted into them.
 
 ```javascript
-const template = name => html`<p>Hello ${name}</p>`;
+const template = (name) => html`<p>Hello ${name}</p>`;
 ```
 
-These interpreted values can in turn be any kind of object that lite-html can render, including nested templates and arrays.
-
-A literal `<` character in the text of a template is rendered as text when it is not followed by a letter, `/`, `!`, or `?`, exactly like browsers parse HTML.
-
-```javascript
-const template = (a, b) => html`<p>${a} < ${b}</p>`;
-```
+An interpreted value in the content of an element can be any [renderable value](#renderable-values), including nested templates and arrays.
 
 Interpreted values are not allowed inside `<script>`, `<style>`, `<textarea>`, `<title>`, and nested `<template>` elements.
 
-#### Dynamic attributes
+#### Attributes
 
-The `html` tag can also be used to set attributes on nodes. To set an attribute, assign the value of the attribute with an interpreted value. Lite-html requires that you omit the surrounding `"` when setting attributes.
+To set an attribute, assign it an interpreted value. The interpreted value must be the complete value of the attribute, without surrounding `"` or other text.
 
 ```javascript
-const template = source => html`<img src=${source} />`;
+const image = (source) => html`<img src=${source} />`;
 
-// Composite attribute
-const template = classString => html`<div class=${`red ${classString}`}></div>`;
+// Build a composite value in JavaScript
+const box = (color) => html`<div class=${`box ${color}`}></div>`;
 ```
+
+An attribute that is set to `null` or `undefined` becomes an empty attribute. Use the `ifDefined` directive to remove the attribute instead.
 
 #### Boolean attributes
 
-You can set boolean attributes by prefixing the attribute name with `?`
+You can set boolean attributes by prefixing the attribute name with `?`. The attribute is added when the value is truthy, and removed otherwise.
 
 ```javascript
-const template = secret => html`<p ?hidden=${secret}></p>`;
+const template = (secret) => html`<p ?hidden=${secret}></p>`;
 ```
 
 #### Properties
@@ -134,7 +154,7 @@ const template = secret => html`<p ?hidden=${secret}></p>`;
 You can set properties on elements by prefixing an attribute name with `.`
 
 ```javascript
-const template = user => html`<user-panel .user=${user}></user-panel>`;
+const template = (user) => html`<user-panel .user=${user}></user-panel>`;
 ```
 
 #### Event handlers
@@ -142,7 +162,7 @@ const template = user => html`<user-panel .user=${user}></user-panel>`;
 You can attach event handlers by prefixing an attribute name with `@`
 
 ```javascript
-const handleClick = () => {
+const handleClick = (event) => {
   alert('clicked the button');
 };
 const template = () => html`<button @click=${handleClick}></button>`;
@@ -150,16 +170,33 @@ const template = () => html`<button @click=${handleClick}></button>`;
 
 #### Security
 
-Interpreted values in the content of a node are always rendered as text, never as HTML. Attributes, properties, and event handlers are set exactly as given. Never use untrusted input for attributes that run code or load resources (such as `href`, `src`, or `onclick`), or for properties like `.innerHTML`.
+Strings in the content of an element are always rendered as text, never as HTML. Attributes, properties, and event handlers are set exactly as given. Never use untrusted input for attributes that run code or load resources (such as `href`, `src`, or `onclick`), or for properties like `.innerHTML`.
 
 ### svg
 
 The `svg` tag works like the `html` tag, but its contents are parsed as SVG. Use it for templates that are rendered inside an `<svg>` element.
 
 ```javascript
-const circle = radius => svg`<circle r=${radius}></circle>`;
-const template = radius => html`<svg>${circle(radius)}</svg>`;
+const circle = (radius) => svg`<circle r=${radius}></circle>`;
+const template = (radius) => html`<svg>${circle(radius)}</svg>`;
 ```
+
+### render(value, target)
+
+The `render` function renders a value into a target `Node`, usually the document body, a container element, or a shadow root. The value is usually a template, but it can be any [renderable value](#renderable-values).
+
+The first time something is rendered into a target, the existing content of the target is removed. Rendering into the same target again updates the content that is already there.
+
+```javascript
+const template = (name) => html`<p>Hello ${name}</p>`;
+
+render(template('World'), document.body);
+
+// The same template is rendered again, so only the name is updated
+render(template('Everyone'), document.body);
+```
+
+Lite-html keeps empty comment nodes (`<!---->`) in the rendered content to remember where the interpreted values are. Do not remove them.
 
 ### Directives
 
@@ -177,21 +214,25 @@ import { html, render, cache, guard, ifDefined, repeat, unsafeHTML, until, when 
 - `until(promise, defaultContent)` renders `defaultContent` until `promise` resolves, then renders its result.
 - `unsafeHTML(htmlString)` renders a string as HTML. Never use it with untrusted input.
 
-## Why it is fast
+## Comparison with lit-html
 
-Todo: Explain why it is fast
+Lite-html has the same core API as lit-html, but it aims to be more lightweight and easier to understand. To get there, it is slightly more opinionated and focuses on what most projects need. The most notable differences are:
 
-## Differences with lit-html
+- **No multi-part attributes:** An attribute must be set with a single interpreted value, without quotes or other text around it. Build the complete value in JavaScript instead.
 
-Todo: Explain what is different
+  ```javascript
+  // Not supported, this throws an error
+  html`<div class="red ${name}"></div>`;
 
-## How it works
+  // Use a single interpreted value instead
+  html`<div class=${`red ${name}`}></div>`;
+  ```
 
-Todo: Explain all the things
+- **Focused on common use cases:** Features that few projects need, such as Trusted Types, are not included.
 
 ## Development
 
-Requires Node.js.
+Requires Node.js 20 or later.
 
 ```
 npm install
@@ -203,6 +244,6 @@ npm run build       # Build the minified bundle served by unpkg
 
 ## License
 
-[MIT](http://opensource.org/licenses/MIT)
+[MIT](https://opensource.org/licenses/MIT)
 
 Copyright © 2026 Goffert van Gool
