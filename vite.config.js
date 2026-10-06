@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 
-const license = '/** @license MIT License, Copyright (c) 2026 Goffert van Gool */';
+const license = '/** @license Copyright (c) 2026 Goffert van Gool, SPDX-License-Identifier: MIT */';
 
 export default defineConfig({
   build: {
@@ -10,7 +10,7 @@ export default defineConfig({
       fileName: () => 'lite-html.min.js',
     },
     rolldownOptions: {
-      output: { minify: true, comments: false, postBanner: license },
+      output: { minify: true, postBanner: license },
     },
   },
   test: {
