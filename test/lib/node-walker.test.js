@@ -135,6 +135,31 @@ describe('nodeWalker', () => {
       expect(() => findParts(strings, template)).to.throw();
     });
 
+    it(`removes the dynamic attributes from the template`, () => {
+      const strings = html`<div a=${0} .b=${1} c="2"></div>`;
+      const template = buildTemplate(strings);
+      findParts(strings, template);
+      expect(template.innerHTML).to.equal('<div c="2"></div>');
+    });
+
+    it(`throws an Error when a part is inside an element that does not contain HTML`, () => {
+      const elements = {
+        textarea: html`<textarea>${0}</textarea>`,
+        title: html`<title>${0}</title>`,
+        style: html`<style>p { color: ${0} }</style>`,
+        script: html`<script>${0}</script>`,
+        template: html`<template><p>${0}</p></template>`
+      };
+      Object.entries(elements).forEach(([element, strings]) => {
+        const template = buildTemplate(strings);
+        expect(() => findParts(strings, template)).to.throw(`Parts are not allowed inside <${element}> elements`);
+      });
+
+      const strings = html`<textarea a=${0}></textarea><template a=${0}></template>`;
+      const template = buildTemplate(strings);
+      expect(() => findParts(strings, template)).to.not.throw();
+    });
+
     it(`throws an Error when attributes are assigned to more than once`, () => {
       let strings = html`
         <div

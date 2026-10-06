@@ -24,6 +24,7 @@
  */
 
 import { directive } from '../lib/directive.js';
+import { createMarker } from '../lib/dom.js';
 import { NodePart } from '../lib/parts.js';
 
 // The keyed item parts that were last rendered in each part
@@ -67,7 +68,7 @@ export const repeat = (items, keyFn, template) =>
     const parent = part.parentNode;
     const rendered = [];
     // The node where the next item should start
-    let next = part.beforeNode ? part.beforeNode.nextSibling : parent.firstChild;
+    let next = part.beforeNode.nextSibling;
     let index = 0;
     for (const item of items) {
       const key = keyFn(item, index);
@@ -80,11 +81,10 @@ export const repeat = (items, keyFn, template) =>
         }
       } else {
         // Create a new item part with its own boundary nodes
-        const before = document.createTextNode('');
-        const after = document.createTextNode('');
+        const before = createMarker();
         parent.insertBefore(before, next);
-        parent.insertBefore(after, next);
-        itemPart = new NodePart({ parent, before, after });
+        parent.insertBefore(createMarker(), next);
+        itemPart = new NodePart({ node: before });
       }
       itemPart.render(template(item, index++));
       rendered.push({ key, itemPart });

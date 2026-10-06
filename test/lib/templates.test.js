@@ -118,9 +118,7 @@ describe('templates', () => {
           <div>
         </div>
         `.template;
-      const parent = document.createElement('div');
-      parent.id = 'root';
-      const instance = new TemplateInstance(template, parent);
+      const instance = new TemplateInstance(template);
 
       expect(instance.parts.length).to.equal(9);
 
@@ -133,7 +131,7 @@ describe('templates', () => {
       expect(instance.parts[3] instanceof NodePart).to.be.true;
       expect(instance.parts[3].parentNode.id).to.equal('parent3');
       expect(instance.parts[4] instanceof NodePart).to.be.true;
-      expect(instance.parts[4].parentNode.id).to.equal('root');
+      expect(instance.parts[4].parentNode).to.equal(instance.fragment);
       expect(instance.parts[5] instanceof AttributePart).to.be.true;
       expect(instance.parts[5].node.id).to.equal('node5');
       expect(instance.parts[6] instanceof AttributePart).to.be.true;
@@ -143,6 +141,20 @@ describe('templates', () => {
       expect(instance.parts[7].node.id).to.equal('node6');
       expect(instance.parts[8] instanceof CommentPart).to.be.true;
       expect(instance.parts[8].node.parentNode.id).to.equal('node6');
+    });
+
+    it(`removes the markers of the parts from the nodes`, () => {
+      const instance = new TemplateInstance(html`<div a=${0} .b=${1} ?c=${2} @d=${3}>${4}</div>`.template);
+      expect(fragmentString(instance.fragment)).to.equal('<div><!----></div>');
+    });
+
+    it(`creates the nodes of svg templates in the SVG namespace`, () => {
+      const svg = (strings, ...values) => new TemplateResult(strings, values, true);
+      const instance = new TemplateInstance(svg`<circle r=${0}></circle>${1}`.template);
+      expect(instance.fragment.childNodes.length).to.equal(3);
+      expect(instance.fragment.firstChild.localName).to.equal('circle');
+      expect(instance.fragment.firstChild.namespaceURI).to.equal('http://www.w3.org/2000/svg');
+      expect(instance.parts.length).to.equal(2);
     });
 
     it(`calls 'render' on the parts with the correct values`, () => {

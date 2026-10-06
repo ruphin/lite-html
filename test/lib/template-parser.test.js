@@ -80,6 +80,14 @@ describe('templateParser', () => {
       expect(parseContext('<div a =').context).to.equal(attributeContext);
     });
 
+    it(`only detects attribute contexts when the '<' character opens a tag`, () => {
+      expect(parseContext('1 < 2').context).to.equal(unchangedContext);
+      expect(parseContext('<div>1 < 2').context).to.equal(nodeContext);
+      expect(parseContext('<div>1 <= 2').context).to.equal(nodeContext);
+      expect(parseContext('<div>1 < 2 <div a=').context).to.equal(attributeContext);
+      expect(parseContext('<div>a<b a=').context).to.equal(attributeContext);
+    });
+
     it(`detects a node context when an attribute contains the '>' character`, () => {
       expect(parseContext('<div a=">" b=').context).to.equal(nodeContext);
     });
@@ -88,15 +96,15 @@ describe('templateParser', () => {
   describe('parseTemplate', () => {
     it(`inserts nodeMarkerTags`, () => {
       expect(parseTemplate(html`<div>${0}</div>`)).to.equal(`<div>${nodeMarkerTag}</div>`);
-      expect(parseTemplate(html`${0}`)).to.equal(`${nodeMarkerTag}`);
-      expect(parseTemplate(html`a${0}`)).to.equal(`a${nodeMarkerTag}`);
+      expect(parseTemplate(html`${0}`)).to.equal(`${nodeMarkerTag}<!---->`);
+      expect(parseTemplate(html`a${0}`)).to.equal(`a${nodeMarkerTag}<!---->`);
       expect(parseTemplate(html`${0}a`)).to.equal(`${nodeMarkerTag}a`);
-      expect(parseTemplate(html`${0}${0}`)).to.equal(`${nodeMarkerTag}${nodeMarkerTag}`);
-      expect(parseTemplate(html`a${0}${0}`)).to.equal(`a${nodeMarkerTag}${nodeMarkerTag}`);
-      expect(parseTemplate(html`${0}b${0}`)).to.equal(`${nodeMarkerTag}b${nodeMarkerTag}`);
+      expect(parseTemplate(html`${0}${0}`)).to.equal(`${nodeMarkerTag}${nodeMarkerTag}<!---->`);
+      expect(parseTemplate(html`a${0}${0}`)).to.equal(`a${nodeMarkerTag}${nodeMarkerTag}<!---->`);
+      expect(parseTemplate(html`${0}b${0}`)).to.equal(`${nodeMarkerTag}b${nodeMarkerTag}<!---->`);
       expect(parseTemplate(html`${0}${0}c`)).to.equal(`${nodeMarkerTag}${nodeMarkerTag}c`);
       expect(parseTemplate(html`a${0}b${0}c`)).to.equal(`a${nodeMarkerTag}b${nodeMarkerTag}c`);
-      expect(parseTemplate(html`<!-- -->${0}`)).to.equal(`<!-- -->${nodeMarkerTag}`);
+      expect(parseTemplate(html`<!-- -->${0}`)).to.equal(`<!-- -->${nodeMarkerTag}<!---->`);
     });
 
     it(`inserts attributeMarkerTags`, () => {
@@ -145,22 +153,22 @@ describe('templateParser', () => {
         `<div a=${attributeMarkerTag} b=${attributeMarkerTag}>${nodeMarkerTag}</div>${nodeMarkerTag}<!--${commentMarkerTag}${commentMarkerTag}-->`
       );
       expect(parseTemplate(html`<div a=${0} b=${0}>${0}</div><!--${0}${0}-->${0}`)).to.equal(
-        `<div a=${attributeMarkerTag} b=${attributeMarkerTag}>${nodeMarkerTag}</div><!--${commentMarkerTag}${commentMarkerTag}-->${nodeMarkerTag}`
+        `<div a=${attributeMarkerTag} b=${attributeMarkerTag}>${nodeMarkerTag}</div><!--${commentMarkerTag}${commentMarkerTag}-->${nodeMarkerTag}<!---->`
       );
       expect(parseTemplate(html`<div a=${0} b=${0}></div><!--${0}${0}-->${0}${0}`)).to.equal(
-        `<div a=${attributeMarkerTag} b=${attributeMarkerTag}></div><!--${commentMarkerTag}${commentMarkerTag}-->${nodeMarkerTag}${nodeMarkerTag}`
+        `<div a=${attributeMarkerTag} b=${attributeMarkerTag}></div><!--${commentMarkerTag}${commentMarkerTag}-->${nodeMarkerTag}${nodeMarkerTag}<!---->`
       );
       expect(parseTemplate(html`<!--${0}${0}--><div a=${0} b=${0}>${0}${0}</div>`)).to.equal(
         `<!--${commentMarkerTag}${commentMarkerTag}--><div a=${attributeMarkerTag} b=${attributeMarkerTag}>${nodeMarkerTag}${nodeMarkerTag}</div>`
       );
       expect(parseTemplate(html`<!--${0}${0}--><div a=${0} b=${0}>${0}</div>${0}`)).to.equal(
-        `<!--${commentMarkerTag}${commentMarkerTag}--><div a=${attributeMarkerTag} b=${attributeMarkerTag}>${nodeMarkerTag}</div>${nodeMarkerTag}`
+        `<!--${commentMarkerTag}${commentMarkerTag}--><div a=${attributeMarkerTag} b=${attributeMarkerTag}>${nodeMarkerTag}</div>${nodeMarkerTag}<!---->`
       );
       expect(parseTemplate(html`<!--${0}${0}-->${0}<div a=${0} b=${0}>${0}</div>`)).to.equal(
         `<!--${commentMarkerTag}${commentMarkerTag}-->${nodeMarkerTag}<div a=${attributeMarkerTag} b=${attributeMarkerTag}>${nodeMarkerTag}</div>`
       );
       expect(parseTemplate(html`<!--${0}${0}--><div a=${0} b=${0}></div>${0}${0}`)).to.equal(
-        `<!--${commentMarkerTag}${commentMarkerTag}--><div a=${attributeMarkerTag} b=${attributeMarkerTag}></div>${nodeMarkerTag}${nodeMarkerTag}`
+        `<!--${commentMarkerTag}${commentMarkerTag}--><div a=${attributeMarkerTag} b=${attributeMarkerTag}></div>${nodeMarkerTag}${nodeMarkerTag}<!---->`
       );
       expect(parseTemplate(html`<!--${0}${0}-->${0}${0}<div a=${0} b=${0}></div>`)).to.equal(
         `<!--${commentMarkerTag}${commentMarkerTag}-->${nodeMarkerTag}${nodeMarkerTag}<div a=${attributeMarkerTag} b=${attributeMarkerTag}></div>`
@@ -178,7 +186,7 @@ describe('templateParser', () => {
         `${nodeMarkerTag}<div a=${attributeMarkerTag} b=${attributeMarkerTag}><!--${commentMarkerTag}${commentMarkerTag}-->${nodeMarkerTag}</div>`
       );
       expect(parseTemplate(html`${0}<div a=${0} b=${0}><!--${0}${0}--></div>${0}`)).to.equal(
-        `${nodeMarkerTag}<div a=${attributeMarkerTag} b=${attributeMarkerTag}><!--${commentMarkerTag}${commentMarkerTag}--></div>${nodeMarkerTag}`
+        `${nodeMarkerTag}<div a=${attributeMarkerTag} b=${attributeMarkerTag}><!--${commentMarkerTag}${commentMarkerTag}--></div>${nodeMarkerTag}<!---->`
       );
     });
   });
@@ -203,14 +211,19 @@ describe('templateParser', () => {
       expect(buildTemplate(html`<!--${0}-->`).content.childNodes[1].textContent).to.equal(commentMarker);
     });
 
+    it(`adds a comment after a part at the end of the template`, () => {
+      expect(buildTemplate(html`${0}`).content.lastChild.textContent).to.equal('');
+      expect(buildTemplate(html`${0}a`).content.lastChild.nodeType).to.equal(3);
+    });
+
     it(`does not create extra empty text nodes`, () => {
       expect(buildTemplate(html`<div>${0}</div>`).content.childNodes[0].childNodes.length).to.equal(1);
-      expect(buildTemplate(html`${0}`).content.childNodes.length).to.equal(1);
-      expect(buildTemplate(html`a${0}`).content.childNodes.length).to.equal(2);
+      expect(buildTemplate(html`${0}`).content.childNodes.length).to.equal(2);
+      expect(buildTemplate(html`a${0}`).content.childNodes.length).to.equal(3);
       expect(buildTemplate(html`${0}a`).content.childNodes.length).to.equal(2);
-      expect(buildTemplate(html`${0}${0}`).content.childNodes.length).to.equal(2);
-      expect(buildTemplate(html`a${0}${0}`).content.childNodes.length).to.equal(3);
-      expect(buildTemplate(html`${0}b${0}`).content.childNodes.length).to.equal(3);
+      expect(buildTemplate(html`${0}${0}`).content.childNodes.length).to.equal(3);
+      expect(buildTemplate(html`a${0}${0}`).content.childNodes.length).to.equal(4);
+      expect(buildTemplate(html`${0}b${0}`).content.childNodes.length).to.equal(4);
       expect(buildTemplate(html`${0}${0}c`).content.childNodes.length).to.equal(3);
       expect(buildTemplate(html`a${0}b${0}c`).content.childNodes.length).to.equal(5);
     });

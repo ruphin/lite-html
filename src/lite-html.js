@@ -25,6 +25,7 @@
 
 import { TemplateResult } from './lib/templates.js';
 import { NodePart } from './lib/parts.js';
+import { createMarker } from './lib/dom.js';
 
 export { noChange } from './lib/parts.js';
 export * from './directives/index.js';
@@ -43,6 +44,17 @@ export const html = (strings, ...values) => {
 };
 
 /**
+ * Tagging function to tag JavaScript template string literals as SVG
+ * Use this for templates that are rendered inside an `<svg>` element
+ *
+ * @return {TemplateResult}
+ *   The strings and values of the template string wrapped in a TemplateResult object
+ */
+export const svg = (strings, ...values) => {
+  return new TemplateResult(strings, values, true);
+};
+
+/**
  * Render content into a target node
  *
  * @param {any} content
@@ -56,7 +68,10 @@ export const render = (content, target) => {
   let part = nodeParts.get(target);
   if (!part) {
     // If it does not, create a new NodePart
-    part = new NodePart({ parent: target });
+    // The part needs a marker to render after, and that marker replaces the previous content of the target
+    const node = createMarker();
+    target.replaceChildren(node);
+    part = new NodePart({ node });
     nodeParts.set(target, part);
   }
   // Task the NodePart of this target to render the content

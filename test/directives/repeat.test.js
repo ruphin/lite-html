@@ -25,6 +25,7 @@
 
 import { repeat } from '../../src/directives/repeat.js';
 import { render, html } from '../../src/lite-html.js';
+import { innerHTML } from '../helpers.js';
 
 import { describe, it, beforeEach, expect } from 'vitest';
 
@@ -45,7 +46,7 @@ describe('repeat', () => {
 
   it('renders items with a keyFn', () => {
     render(keyed([1, 2, 3]), container);
-    expect(container.innerHTML).to.equal('<ul><li>1</li><li>2</li><li>3</li></ul>');
+    expect(innerHTML(container)).to.equal('<ul><li>1</li><li>2</li><li>3</li></ul>');
   });
 
   it('passes the index to keyFn and template', () => {
@@ -68,7 +69,7 @@ describe('repeat', () => {
     expect(text()).to.equal('024');
     expect(listItems()[1]).to.equal(two);
     render(keyed([]), container);
-    expect(container.innerHTML).to.equal('<ul></ul>');
+    expect(innerHTML(container)).to.equal('<ul></ul>');
     render(keyed([5, 6]), container);
     expect(text()).to.equal('56');
   });
@@ -95,13 +96,22 @@ describe('repeat', () => {
     const template = value => html`<ul>${value}</ul>`;
     render(template(repeat([1, 2], item => item, item => html`<li>${item}</li>`)), container);
     render(template('text'), container);
-    expect(container.innerHTML).to.equal('<ul>text</ul>');
+    expect(innerHTML(container)).to.equal('<ul>text</ul>');
     render(template(repeat([2, 1], item => item, item => html`<li>${item}</li>`)), container);
-    expect(container.innerHTML).to.equal('<ul><li>2</li><li>1</li></ul>');
+    expect(innerHTML(container)).to.equal('<ul><li>2</li><li>1</li></ul>');
     render(template('text'), container);
-    expect(container.innerHTML).to.equal('<ul>text</ul>');
+    expect(innerHTML(container)).to.equal('<ul>text</ul>');
     render(template(repeat([1, 2], item => html`<li>${item}</li>`)), container);
-    expect(container.innerHTML).to.equal('<ul><li>1</li><li>2</li></ul>');
+    expect(innerHTML(container)).to.equal('<ul><li>1</li><li>2</li></ul>');
+  });
+
+  it('does not break when the parent is normalized', () => {
+    render(keyed([1, 2, 3]), container);
+    container.normalize();
+    render(keyed([3, 1]), container);
+    expect(text()).to.equal('31');
+    render(keyed([1, 2, 3]), container);
+    expect(text()).to.equal('123');
   });
 
   it('accepts any iterable', () => {

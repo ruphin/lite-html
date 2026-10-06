@@ -1,3 +1,4 @@
+export { cache } from './cache.js';
 export { guard } from './guard.js';
 export { ifDefined } from './if-defined.js';
 export { repeat } from './repeat.js';

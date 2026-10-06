@@ -10,7 +10,7 @@ _A modern replacement for VirtualDOM rendering engines_
 
 - **Highly Flexible:** Use expressive JavaScript templates that can render anything to HTML. Set properties and event listeners directly from the template.
 - **Extremely Performant:** Using the latest generation of rendering techniques, it easily outperforms contemporary VirtualDOM-based rendering as used in modern frontend frameworks.
-- **Lightweight:** ~2kb total size.
+- **Lightweight:** Under 3kB total size.
 - **API Compatible with lit-html:** Can be used as a drop-in replacement for lit-html in most projects.
 
 ## Examples
@@ -84,6 +84,8 @@ Any other object is coerced to a String before being rendered.
 
 The second argument is the `Node` that the object will be rendered into. The previous content of the `Node` will be removed.
 
+Lite-html keeps empty comment nodes (`<!---->`) in the rendered content to remember where the interpreted values are. Do not remove them.
+
 ### html
 
 The `html` is a [JavaScript template tag](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals#Tagged_templates) that allows creation of flexible templates which will be interpreted as HTML. To use the tag, prepend it to any [JavaScript template literal](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals).
@@ -99,6 +101,14 @@ const template = name => html`<p>Hello ${name}</p>`;
 ```
 
 These interpreted values can in turn be any kind of object that lite-html can render, including nested templates and arrays.
+
+A literal `<` character in the text of a template is rendered as text when it is not followed by a letter, `/`, `!`, or `?`, exactly like browsers parse HTML.
+
+```javascript
+const template = (a, b) => html`<p>${a} < ${b}</p>`;
+```
+
+Interpreted values are not allowed inside `<script>`, `<style>`, `<textarea>`, `<title>`, and nested `<template>` elements.
 
 #### Dynamic attributes
 
@@ -138,14 +148,28 @@ const handleclick = () => {
 const template = () => html`<button @click=${handleClick}></button>`;
 ```
 
+#### Security
+
+Interpreted values in the content of a node are always rendered as text, never as HTML. Attributes, properties, and event handlers are set exactly as given. Never use untrusted input for attributes that run code or load resources (such as `href`, `src`, or `onclick`), or for properties like `.innerHTML`.
+
+### svg
+
+The `svg` tag works like the `html` tag, but its contents are parsed as SVG. Use it for templates that are rendered inside an `<svg>` element.
+
+```javascript
+const circle = radius => svg`<circle r=${radius}></circle>`;
+const template = radius => html`<svg>${circle(radius)}</svg>`;
+```
+
 ### Directives
 
 Directives are exported alongside `html` and `render`.
 
 ```javascript
-import { html, render, guard, ifDefined, repeat, unsafeHTML, until, when } from 'lite-html';
+import { html, render, cache, guard, ifDefined, repeat, unsafeHTML, until, when } from 'lite-html';
 ```
 
+- `cache(value)` renders `value`, and keeps the DOM of every template rendered in that position. Without `cache`, the DOM of a template is discarded when something else is rendered in its place. Use it to switch quickly between a few large templates.
 - `guard(dependencies, valueFn)` renders the result of `valueFn`, and only calls it again when one of the `dependencies` changes identity.
 - `ifDefined(value)` sets an attribute to `value`, or removes the attribute when `value` is `undefined` or `null`.
 - `repeat(items, keyFn, template)` renders `template(item, index)` for each item. The DOM for each key returned by `keyFn` is kept and moved when items are reordered. Without `keyFn`, it renders like `items.map(template)`.

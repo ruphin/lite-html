@@ -47,6 +47,9 @@ const markers = new Map([
   [nodeContext, nodeMarkerTag],
 ]);
 
+// A `<` only opens a tag if it is followed by one of these characters, otherwise the browser treats it as text
+const tagOpen = /<[a-zA-Z/!?]/;
+
 export const parseContext = string => {
   const openComment = string.lastIndexOf('<!--');
   const closeComment = string.indexOf('-->', openComment + 1);
@@ -56,7 +59,7 @@ export const parseContext = string => {
     context = commentContext;
   } else {
     const closeTag = string.lastIndexOf('>');
-    const openTag = string.indexOf('<', closeTag + 1);
+    const openTag = string.slice(closeTag + 1).search(tagOpen);
     if (openTag > -1) {
       context = attributeContext;
     } else {
@@ -86,12 +89,22 @@ export const parseTemplate = strings => {
     html.push(string + markers.get(currentContext));
   }
 
-  html.push(strings[lastStringIndex]);
+  // A NodePart ends at the next sibling of its marker
+  // If the template ends with a part, add a comment so that part does not extend to the end of its future parent
+  html.push(strings[lastStringIndex] || '<!---->');
   return html.join('');
 };
 
-export const buildTemplate = strings => {
+export const buildTemplate = (strings, isSvg) => {
   const template = document.createElement('template');
-  template.innerHTML = parseTemplate(strings);
+  const html = parseTemplate(strings);
+  if (isSvg) {
+    // Parse the content inside an <svg> element to create it in the SVG namespace, then remove that element again
+    template.innerHTML = `<svg>${html}</svg>`;
+    const svg = template.content.firstChild;
+    svg.replaceWith(...svg.childNodes);
+  } else {
+    template.innerHTML = html;
+  }
   return template;
 };

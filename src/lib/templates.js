@@ -25,14 +25,13 @@
 
 import { findParts } from './node-walker.js';
 import { buildTemplate } from './template-parser.js';
-import { NodePart } from './parts.js';
 /**
  * A map that contains all the template literals we have seen before
  * It maps from a String array to a Template object
  *
- * @typedef {Map.<[String], Template>}
+ * @typedef {WeakMap.<[String], Template>}
  */
-const templateMap = new Map();
+const templateMap = new WeakMap();
 
 /**
  * Template holds the DocumentFragment that is to be used as a prototype for instances of this template
@@ -48,21 +47,23 @@ const templateMap = new Map();
  *   the attribute this part represents.
  */
 export class Template {
-  constructor(strings) {
+  constructor(strings, isSvg) {
     this.strings = strings;
-    this.element = buildTemplate(strings);
+    this.element = buildTemplate(strings, isSvg);
     this.parts = findParts(strings, this.element);
   }
 }
 
 /**
  * TemplateResult holds the strings and values that result from a tagged template string literal.
+ * The `isSvg` flag is set for literals tagged with `svg`, their content is parsed as SVG instead of HTML.
  * TemplateResult can find and return a unique Template object that represents its tagged template string literal.
  */
 export class TemplateResult {
-  constructor(strings, values) {
+  constructor(strings, values, isSvg) {
     this.strings = strings;
     this.values = values;
+    this.isSvg = isSvg;
     this._template = undefined;
   }
 
@@ -79,7 +80,7 @@ export class TemplateResult {
     }
     let template = templateMap.get(this.strings);
     if (!template) {
-      template = new Template(this.strings);
+      template = new Template(this.strings, this.isSvg);
       templateMap.set(this.strings, template);
     }
     this._template = template;
@@ -94,33 +95,24 @@ export class TemplateResult {
  *   The unique Template object that this is an instance of
  * @prop {[DocumentFragment]} fragment
  *   The DocumentFragment that is a clone of the Template's prototype DocumentFragment
+ *   It holds the nodes of this instance until they are inserted into the DOM
  * @prop {[AttributePart|CommentPart|NodePart|]} parts
  *   The parts that render into this template instance
  */
 export class TemplateInstance {
-  constructor(template, parent, before, after) {
+  constructor(template) {
     this.template = template;
-    this.fragment = template.element.content.cloneNode(true);
+    // Importing the nodes into the document upgrades custom elements before the parts render into them
+    this.fragment = document.importNode(template.element.content, true);
 
     // Create new Parts based on the part definitions set on the Template
-    const parts = this.template.parts.map(part => {
+    this.parts = template.parts.map(({ type, path, attribute }) => {
       let node = this.fragment;
-      part.path.forEach(nodeIndex => {
+      path.forEach(nodeIndex => {
         node = node.childNodes[nodeIndex];
       });
-      part.node = node;
-      if (part.type === NodePart) {
-        if (part.path.length === 1) {
-          part.parent = parent;
-          part.before = node.previousSibling || before;
-          part.after = node.nextSibling || after;
-        } else {
-          part.parent = node.parentNode;
-        }
-      }
-      return part;
+      return new type({ node, attribute });
     });
-    this.parts = parts.map(part => new part.type(part));
   }
 
   /**
@@ -130,6 +122,6 @@ export class TemplateInstance {
    *   An array of values to render into the parts. There should be one value per part
    */
   render(values) {
-    this.parts.map((part, index) => part.render(values[index]));
+    this.parts.forEach((part, index) => part.render(values[index]));
   }
 }

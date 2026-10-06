@@ -23,13 +23,20 @@
  * SOFTWARE.
  */
 
-import { attributeMarker, commentMarker, nodeMarker, failMarker } from './markers.js';
+import { marker, attributeMarker, commentMarker, nodeMarker, failMarker } from './markers.js';
 import { AttributePart, CommentPart, NodePart } from './parts.js';
 
 const lastAttributeNameRegex = /[ \x09\x0a\x0c\x0d]([^\0-\x1F\x7F-\x9F \x09\x0a\x0c\x0d"'>=/]+)[ \x09\x0a\x0c\x0d]*=$/;
 
 export const findParts = (strings, template) => {
   let parts = [];
+
+  // Markers that were not parsed as HTML can not become parts, so throw an error to alert the developer
+  const failOnMarker = (content, element) => {
+    if (content.includes(marker)) {
+      throw new Error(`Parts are not allowed inside <${element.localName}> elements`);
+    }
+  };
 
   // Recursive depth-first tree traversal that finds nodes in the subtree of `node` that are parts
   // The path is an array of incides of childNodes to get to this node
@@ -39,9 +46,14 @@ export const findParts = (strings, template) => {
       if (node.nodeValue === commentMarker) {
         parts.push({ type: CommentPart, path });
       } else if (node.nodeValue === nodeMarker) {
+        // The NodePart only needs the position of this comment, so empty it to keep the rendered DOM clean
+        node.nodeValue = '';
         parts.push({ type: NodePart, path });
       }
       // If it is not a marker for a Part, it is a regular comment
+    } else if (node.nodeType === 3) {
+      // The content of elements like <style>, <script>, and <textarea> is parsed as a single TextNode
+      failOnMarker(node.nodeValue, node.parentNode);
     } else {
       // If the node is an ElementNode, it may contain AttributeParts
       if (node.nodeType === 1) {
@@ -51,14 +63,20 @@ export const findParts = (strings, template) => {
         if (node.hasAttribute(failMarker)) {
           throw new Error("The '>' character is not allowed in attribute literals. Replace with '&gt;'");
         }
+        // The content of a nested <template> is not part of its childNodes, so it is not searched for parts
+        if (node.localName === 'template') {
+          failOnMarker(node.innerHTML, node);
+        }
         // If the node has any AttributeParts, it will have the attributeMarker attribute set
         if (node.hasAttribute(attributeMarker)) {
           node.removeAttribute(attributeMarker);
 
-          // Find the number of dynamic attributes by checking all attribute values against the attributeMarker
-          const dynamicAttributes = [...node.attributes].filter(attribute => attribute.value === attributeMarker).length;
+          // Find the dynamic attributes by checking all attribute values against the attributeMarker
+          const dynamicAttributes = [...node.attributes].filter(attribute => attribute.value === attributeMarker);
 
-          for (let i = 0; i < dynamicAttributes; i++) {
+          for (const dynamicAttribute of dynamicAttributes) {
+            // The AttributePart renders the real attribute, so remove the marker from the template
+            node.removeAttributeNode(dynamicAttribute);
             // Find the name of this AttributePart using the lastAttributeNameRegex on the string before this part
             const attribute = lastAttributeNameRegex.exec(strings[parts.length])[1];
             parts.push({ type: AttributePart, path, attribute });

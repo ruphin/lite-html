@@ -25,20 +25,22 @@
 
 import { directive } from '../lib/directive.js';
 
-const templates = {};
+// The HTML string that was last rendered in each part, and the DocumentFragment that was created for it
+const previousRenders = new WeakMap();
 
+/**
+ * Render a string as HTML
+ *
+ * The string is only parsed again when it changes, or when the part has rendered something else in between
+ */
 export const unsafeHTML = htmlString =>
   directive(part => {
-    let template = templates[htmlString];
-    if (!template) {
-      template = document.createElement('template');
+    const previous = previousRenders.get(part);
+    if (previous?.htmlString !== htmlString || part.node !== previous.fragment) {
+      const template = document.createElement('template');
       template.innerHTML = htmlString;
-      template.__templateKey = {};
-      templates[htmlString] = template;
-    }
-    if (!part.node || part.node.__templateKey !== template.__templateKey) {
       const fragment = document.importNode(template.content, true);
-      fragment.__templateKey = template.__templateKey;
       part.render(fragment);
+      previousRenders.set(part, { htmlString, fragment });
     }
   });

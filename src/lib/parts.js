@@ -24,7 +24,7 @@
  */
 
 import { TemplateResult, TemplateInstance } from './templates.js';
-import { moveNodes } from './dom.js';
+import { createMarker, moveNodes } from './dom.js';
 import { isDirective } from './directive.js';
 
 export const isSerializable = value => typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
@@ -40,16 +40,20 @@ const emptyNode = {};
 const iterableNode = {};
 
 export class NodePart {
-  // node OR parent _must_ be defined
-  // If a node is defined, this NodePart represents the position of that node in the tree
-  // If a only a parent is defined, this NodePart represents the content of the parent
-  constructor({ node, parent, before, after }) {
-    this.node = node || emptyNode;
+  // The node is a marker, and this NodePart represents the content between that marker and its next sibling
+  // These two nodes are never removed by the part. If the marker has no next sibling, the content extends to the end of the parent
+  constructor({ node }) {
+    this.node = emptyNode;
     this.value = noChange;
 
-    this.parentNode = parent || node?.parentNode;
-    this.beforeNode = before || node?.previousSibling;
-    this.afterNode = after || node?.nextSibling;
+    this.beforeNode = node;
+    this.afterNode = node.nextSibling;
+  }
+
+  // The parent is found through the marker, because the marker moves from a DocumentFragment
+  // into the DOM when the template that contains this part is rendered
+  get parentNode() {
+    return this.beforeNode.parentNode;
   }
 
   render(value) {
@@ -66,7 +70,7 @@ export class NodePart {
         this._renderIterable(value);
       } else if (value instanceof Node) {
         this._renderNode(value);
-      } else if (value.then !== undefined) {
+      } else if (typeof value.then === 'function') {
         this._renderPromise(value);
         // Return here because we do not want to set `this.value` with the promise
         return;
@@ -88,10 +92,10 @@ export class NodePart {
   _renderText(serializable) {
     // If the text is not equal to the previously rendered value
     if (this.value !== serializable) {
-      // If the node is a TextNode, replace the content of that node
+      // If the previous value was also serializable, replace the content of the TextNode we created for it
       // Otherwise, create a new TextNode with the primitive value as content
-      if (this.node.nodeType === 3) {
-        this.node.textContent = serializable;
+      if (isSerializable(this.value)) {
+        this.node.data = serializable;
       } else {
         this._renderNode(document.createTextNode(serializable));
       }
@@ -101,23 +105,20 @@ export class NodePart {
   /**
    * Render a TemplateResult in this part
    *
-   * Checks if this template has already been rendered in this part before.
+   * Checks if this part is currently rendering an instance of this template.
    * If so, re-use that TemplateInstance
    * If not, create a new TemplateInstance
    */
   _renderTemplateResult(templateResult) {
-    this.templateInstances ??= new Map();
-    let instance = this.templateInstances.get(templateResult.template);
-    if (!instance) {
-      instance = new TemplateInstance(templateResult.template, this.parentNode, this.beforeNode, this.afterNode);
-      this.templateInstances.set(templateResult.template, instance);
+    if (this.instance?.template === templateResult.template) {
+      this.instance.render(templateResult.values);
+    } else {
+      const instance = new TemplateInstance(templateResult.template);
+      // Render the values before inserting the fragment, so the new content is added to the DOM in one go
+      instance.render(templateResult.values);
+      this._renderNode(instance.fragment);
+      this.instance = instance;
     }
-    if (this.node !== instance.fragment) {
-      this.clear();
-      this.parentNode.insertBefore(instance.fragment, this.afterNode);
-      this.node = instance.fragment;
-    }
-    instance.render(templateResult.values);
   }
 
   /**
@@ -130,34 +131,30 @@ export class NodePart {
     if (this.node !== iterableNode) {
       this.clear();
       this.node = iterableNode;
-      if (!this.iterableParts) {
-        this.iterableParts = [];
-      } else {
-        this.iterableParts.length = 0;
-      }
+      this.iterableParts = [];
     }
 
     let index = 0;
-    let before = this.afterNode ? this.afterNode.previousSibling : this.parentNode.lastChild;
-    let after;
-    const parent = this.parentNode;
+    // The marker of the next new part: the marker of this part, or the node that ends the last existing part
+    let marker = this.afterNode ? this.afterNode.previousSibling : this.parentNode.lastChild;
     for (const value of iterable) {
       let part = this.iterableParts[index];
       if (part === undefined) {
-        after = document.createTextNode('');
+        // Insert the node that ends the new part before creating it, that node is also the marker of the next part
+        const after = createMarker();
         this.parentNode.insertBefore(after, this.afterNode);
-        part = new NodePart({ before, after, parent });
+        part = new NodePart({ node: marker });
         this.iterableParts.push(part);
-        before = after;
+        marker = after;
       }
       part.render(value);
       index++;
     }
     if (index === 0) {
-      moveNodes(this.parentNode, this.beforeNode, this.afterNode);
+      moveNodes(this.beforeNode, this.afterNode);
     } else if (index < this.iterableParts.length) {
       const lastPart = this.iterableParts[index - 1];
-      moveNodes(this.parentNode, lastPart.afterNode, this.afterNode);
+      moveNodes(lastPart.afterNode, this.afterNode);
     }
     this.iterableParts.length = index;
   }
@@ -194,13 +191,15 @@ export class NodePart {
   /**
    * Clear out the content of this NodePart
    *
-   * If the current node is part of a DocumentFragment (this NodePart rendered a TemplateResult)
+   * If the current node is a DocumentFragment (this NodePart rendered a TemplateResult)
    * The current content is moved back into that fragment to be used again if the same fragment is rendered
    * Otherwise, the current content is removed from the DOM permanently
    */
   clear() {
-    moveNodes(this.parentNode, this.beforeNode, this.afterNode, this.node instanceof DocumentFragment && this.node);
+    moveNodes(this.beforeNode, this.afterNode, this.node instanceof DocumentFragment && this.node);
     this.node = emptyNode;
+    // Release the TemplateInstance and the item parts that were rendered in this part
+    this.instance = this.iterableParts = undefined;
   }
 }
 
@@ -218,6 +217,7 @@ export class CommentPart {
 export class AttributePart {
   constructor({ node, attribute }) {
     this.node = node;
+    this.value = noChange;
     switch (attribute[0]) {
       case '.':
         this.type = 'property';
@@ -235,12 +235,11 @@ export class AttributePart {
         this.type = 'attribute';
         this._render = this._renderAttribute;
     }
-    // Prefixed attributes are not real attributes, so remove them from the node
-    if (this.type === 'attribute') {
-      this.name = attribute;
-    } else {
-      this.node.removeAttribute(attribute);
-      this.name = attribute.slice(1);
+    // Prefixed attributes are not real attributes, the name is the part after the prefix
+    this.name = this.type === 'attribute' ? attribute : attribute.slice(1);
+    // The part itself is the event listener, so the handler can change without replacing the listener
+    if (this.type === 'event') {
+      this.node.addEventListener(this.name, this);
     }
   }
 
@@ -264,17 +263,26 @@ export class AttributePart {
   }
 
   _renderEvent(listener) {
-    if (this.value !== listener) {
-      this.node.removeEventListener(this.name, this.value);
-      this.node.addEventListener(this.name, listener);
-      this.value = listener;
+    this.value = listener;
+  }
+
+  /**
+   * Called by the browser when the event of an event part fires
+   *
+   * The listener is either a function, or an object with a `handleEvent` method
+   */
+  handleEvent(event) {
+    if (typeof this.value === 'function') {
+      this.value.call(this.node, event);
+    } else {
+      this.value?.handleEvent?.(event);
     }
   }
 
-  _renderAttribute(string) {
-    if (this.value !== string) {
-      this.node.setAttribute(this.name, string);
-      this.value = string;
+  _renderAttribute(value) {
+    if (this.value !== value) {
+      this.node.setAttribute(this.name, value ?? '');
+      this.value = value;
     }
   }
 }
