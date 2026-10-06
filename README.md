@@ -41,7 +41,7 @@ const groceryList = items => html`
 
 const groceries = [{ name: 'Apples', quantity: 2 }, { name: 'Oranges', quantity: 4 }];
 
-render(groceryList(groceries), document.getElemenyById('groceryList'));
+render(groceryList(groceries), document.getElementById('groceryList'));
 ```
 
 ## Installing
@@ -142,7 +142,7 @@ const template = user => html`<user-panel .user=${user}></user-panel>`;
 You can attach event handlers by prefixing an attribute name with `@`
 
 ```javascript
-const handleclick = () => {
+const handleClick = () => {
   alert('clicked the button');
 };
 const template = () => html`<button @click=${handleClick}></button>`;
