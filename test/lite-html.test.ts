@@ -1,4 +1,4 @@
-import { render, html, svg } from '../src/lite-html.js';
+import { render, html, svg, repeat } from '../src/lite-html.js';
 import { innerHTML } from './helpers.js';
 
 import { describe, it, beforeEach, expect } from 'vitest';
@@ -43,7 +43,28 @@ describe('lite-html', () => {
       expect(innerHTML(container)).to.equal('<p>12<i></i></p>');
     });
 
+    it('calls event handlers with the host option as `this`, in nested templates, lists, and repeat', () => {
+      const host = {};
+      const contexts: unknown[] = [];
+      const handler = function (this: unknown) {
+        contexts.push(this);
+      };
+      render(
+        html`<a @click=${handler}></a>${html`<b @click=${handler}></b>`}${[html`<i @click=${handler}></i>`]}${repeat(
+          [1],
+          item => item,
+          () => html`<u @click=${handler}></u>`,
+        )}`,
+        container,
+        { host },
+      );
+      container.querySelectorAll('a, b, i, u').forEach(node => (node as HTMLElement).click());
+      expect(contexts).to.have.length(4);
+      expect(contexts.every(context => context === host)).to.be.true;
+    });
+
     it('does not leave markers in attributes', () => {
+
       render(html`<a href=${undefined} .b=${1} ?c=${false} @d=${null}></a>`, container);
       expect(innerHTML(container)).to.equal('<a href=""></a>');
     });

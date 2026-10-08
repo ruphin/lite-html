@@ -10,7 +10,7 @@ _A modern replacement for VirtualDOM rendering engines_
 
 - **Highly Flexible:** Use expressive JavaScript templates that can render anything to HTML. Set properties and event listeners directly from the template.
 - **Extremely Performant:** Using the latest generation of rendering techniques, it easily outperforms contemporary VirtualDOM-based rendering as used in modern frontend frameworks.
-- **Lightweight:** Under 3kB minified and gzipped.
+- **Lightweight:** 3kB minified and gzipped.
 - **API Compatible with lit-html:** Can be used as a drop-in replacement for lit-html in most projects.
 
 ## Examples
@@ -181,7 +181,7 @@ const circle = (radius) => svg`<circle r=${radius}></circle>`;
 const template = (radius) => html`<svg>${circle(radius)}</svg>`;
 ```
 
-### render(value, target)
+### render(value, target, options)
 
 The `render` function renders a value into a target `Node`, usually the document body, a container element, or a shadow root. The value is usually a template, but it can be any [renderable value](#renderable-values).
 
@@ -197,6 +197,24 @@ render(template('Everyone'), document.body);
 ```
 
 Lite-html keeps empty comment nodes (`<!---->`) in the rendered content to remember where the interpreted values are. Do not remove them.
+
+The optional `options` object has one property, `host`. Event handlers in the rendered templates are called with the host as `this`. Without a host, `this` is the element the handler is attached to. A component passes itself as the host, so its methods can be used as event handlers without binding them:
+
+```javascript
+class Counter extends HTMLElement {
+  count = 0;
+  increment() {
+    this.count++;
+    this.update();
+  }
+  update() {
+    render(html`<button @click=${this.increment}>${this.count}</button>`, this, { host: this });
+  }
+}
+```
+
+The options are kept from the first render into a target. Passing different options on a later render into the same target has no effect.
+
 
 ### Directives
 

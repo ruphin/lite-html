@@ -202,7 +202,20 @@ describe('parts', () => {
       expect(context === node).to.be.true;
     });
 
+    it(`calls event handlers with the host of the render options as 'this'`, () => {
+      const node = document.createElement('div');
+      const host = {};
+      let part = new AttributePart({ node, attribute: '@click', options: { host } });
+      let context: unknown;
+      part.render(function (this: unknown) {
+        context = this;
+      });
+      node.click();
+      expect(context === host).to.be.true;
+    });
+
     it(`renders objects with a 'handleEvent' method as event handlers`, () => {
+
       const node = document.createElement('div');
       let part = new AttributePart({ node, attribute: '@click' });
       let counter = 0;

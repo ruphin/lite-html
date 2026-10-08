@@ -1,6 +1,6 @@
 import { findParts, type PartDefinition } from './node-walker.js';
 import { buildTemplate } from './template-parser.js';
-import { AttributePart, CommentPart, NodePart, type Part } from './parts.js';
+import { AttributePart, CommentPart, NodePart, type Part, type RenderOptions } from './parts.js';
 
 /**
  * A map that contains all the template literals we have seen before
@@ -78,7 +78,7 @@ export class TemplateInstance {
   // The parts that render into this template instance
   parts: Part[];
 
-  constructor(template: Template) {
+  constructor(template: Template, options?: RenderOptions) {
     this.template = template;
     // Importing the nodes into the document upgrades custom elements before the parts render into them
     this.fragment = document.importNode(template.element.content, true);
@@ -90,12 +90,12 @@ export class TemplateInstance {
         node = node.childNodes[nodeIndex];
       });
       if ('attribute' in definition) {
-        return new AttributePart({ node: node as Element, attribute: definition.attribute });
+        return new AttributePart({ node: node as Element, attribute: definition.attribute, options });
       }
       if (definition.type === CommentPart) {
         return new CommentPart({ node: node as Comment });
       }
-      return new NodePart({ node });
+      return new NodePart({ node, options });
     });
   }
 

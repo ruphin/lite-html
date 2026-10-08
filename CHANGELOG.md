@@ -2,6 +2,12 @@
 
 All notable changes to lite-html are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `render` takes an options object as its third argument. Its `host` property is the object that event handlers in the rendered templates are called with as `this`, so a component can use its methods as event handlers without binding them. Without a host, `this` is the element the handler is attached to, as before.
+
 ## [1.1.0] - 2026-10-08
 
 ### Added

@@ -67,7 +67,8 @@ export const repeat: {
         const before = createMarker();
         parent.insertBefore(before, next);
         parent.insertBefore(createMarker(), next);
-        itemPart = new NodePart({ node: before });
+        itemPart = new NodePart({ node: before, options: part.options });
+
       }
       itemPart.render(template(item, index++));
       rendered.push({ key, itemPart });

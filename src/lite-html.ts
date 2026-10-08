@@ -5,11 +5,11 @@
  */
 
 import { TemplateResult } from './lib/templates.js';
-import { NodePart } from './lib/parts.js';
+import { NodePart, type RenderOptions } from './lib/parts.js';
 import { createMarker } from './lib/dom.js';
 
 export { noChange } from './lib/parts.js';
-export type { Part, NodePart, AttributePart, CommentPart } from './lib/parts.js';
+export type { Part, NodePart, AttributePart, CommentPart, RenderOptions } from './lib/parts.js';
 export type { TemplateResult } from './lib/templates.js';
 export type { Directive } from './lib/directive.js';
 export * from './directives/index.js';
@@ -44,8 +44,11 @@ export const svg = (strings: TemplateStringsArray, ...values: unknown[]): Templa
  * @param target
  *   An HTML Node that you wish to render the content into.
  *   The content will become the sole content of the target node.
+ * @param options
+ *   Options for the render. `host` is the object that event handlers are called with as `this`.
+ *   The options are kept from the first render into a target.
  */
-export const render = (content: unknown, target: ParentNode): void => {
+export const render = (content: unknown, target: ParentNode, options?: RenderOptions): void => {
   // Check if the target has a NodePart that represents its content
   let part = nodeParts.get(target);
   if (!part) {
@@ -53,9 +56,10 @@ export const render = (content: unknown, target: ParentNode): void => {
     // The part needs a marker to render after, and that marker replaces the previous content of the target
     const node = createMarker();
     target.replaceChildren(node);
-    part = new NodePart({ node });
+    part = new NodePart({ node, options });
     nodeParts.set(target, part);
   }
+
   // Task the NodePart of this target to render the content
   part.render(content);
 };

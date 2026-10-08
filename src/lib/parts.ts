@@ -15,6 +15,15 @@ const isPromiseLike = (value: unknown): value is PromiseLike<unknown> =>
 // A flag that signals that no render should happen
 export const noChange = {};
 
+/**
+ * Options for a render, shared by every part that the render creates
+ *
+ * `host` is the object that event handlers are called with as `this`. Without it, `this` is the element
+ * that the handler is attached to. A component renders with itself as the host, so its methods can be
+ * used as event handlers directly.
+ */
+export type RenderOptions = { host?: object };
+
 // A node type for empty parts
 const emptyNode = {};
 
@@ -36,10 +45,13 @@ export class NodePart {
   iterableParts: NodePart[] | undefined;
   // The promise whose result is awaited, if the last value was a promise
   promise: PromiseLike<unknown> | undefined;
+  // The options of the render that created this part
+  options: RenderOptions | undefined;
 
-  constructor({ node }: { node: Node }) {
+  constructor({ node, options }: { node: Node; options?: RenderOptions }) {
     this.node = emptyNode;
     this.value = noChange;
+    this.options = options;
 
     this.beforeNode = node;
     this.afterNode = node.nextSibling;
@@ -108,7 +120,7 @@ export class NodePart {
     if (this.instance?.template === templateResult.template) {
       this.instance.render(templateResult.values);
     } else {
-      const instance = new TemplateInstance(templateResult.template);
+      const instance = new TemplateInstance(templateResult.template, this.options);
       // Render the values before inserting the fragment, so the new content is added to the DOM in one go
       instance.render(templateResult.values);
       this._renderNode(instance.fragment);
@@ -139,7 +151,7 @@ export class NodePart {
         // Insert the node that ends the new part before creating it, that node is also the marker of the next part
         const after = createMarker();
         this.parentNode.insertBefore(after, this.afterNode);
-        part = new NodePart({ node: marker });
+        part = new NodePart({ node: marker, options: this.options });
         iterableParts.push(part);
         marker = after;
       }
@@ -214,7 +226,7 @@ export class CommentPart {
 export type AttributePartType = 'attribute' | 'property' | 'boolean' | 'event';
 
 // An event listener is a function, or an object with a `handleEvent` method
-type EventHandler = ((this: Element, event: Event) => void) | { handleEvent?: (event: Event) => void };
+type EventHandler = ((this: unknown, event: Event) => void) | { handleEvent?: (event: Event) => void };
 
 export class AttributePart {
   node: Element;
@@ -222,11 +234,14 @@ export class AttributePart {
   type: AttributePartType;
   // The name of the attribute, property, or event, without the prefix
   name: string;
+  // The options of the render that created this part
+  options: RenderOptions | undefined;
   _render: (value: unknown) => void;
 
-  constructor({ node, attribute }: { node: Element; attribute: string }) {
+  constructor({ node, attribute, options }: { node: Element; attribute: string; options?: RenderOptions }) {
     this.node = node;
     this.value = noChange;
+    this.options = options;
     switch (attribute[0]) {
       case '.':
         this.type = 'property';
@@ -279,11 +294,13 @@ export class AttributePart {
    * Called by the browser when the event of an event part fires
    *
    * The listener is either a function, or an object with a `handleEvent` method
+   * A function is called with the `host` of the render options as `this`, or the node when there is no host
    */
   handleEvent(event: Event): void {
     const listener = this.value as EventHandler | null | undefined;
     if (typeof listener === 'function') {
-      listener.call(this.node, event);
+      listener.call(this.options?.host ?? this.node, event);
+
     } else {
       listener?.handleEvent?.(event);
     }
