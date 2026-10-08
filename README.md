@@ -20,7 +20,7 @@ _A modern replacement for VirtualDOM rendering engines_
 ```javascript
 const template = (name) => html`<p>Hello ${name}</p>`;
 
-render(template('World'), document.body);
+render(template("World"), document.body);
 ```
 
 ### Simple List
@@ -33,11 +33,11 @@ const groceryList = (items) => html`
 `;
 
 const groceries = [
-  { name: 'Apples', quantity: 2 },
-  { name: 'Oranges', quantity: 4 },
+  { name: "Apples", quantity: 2 },
+  { name: "Oranges", quantity: 4 },
 ];
 
-render(groceryList(groceries), document.getElementById('groceryList'));
+render(groceryList(groceries), document.getElementById("groceryList"));
 ```
 
 ## Installing
@@ -51,13 +51,13 @@ npm install lite-html
 Lite-html is published as an ES module. Import it from your bundler or Node project:
 
 ```javascript
-import { html, render } from 'lite-html';
+import { html, render } from "lite-html";
 ```
 
 Or load it dynamically for live debugging:
 
 ```javascript
-const { html, render } = await import('https://unpkg.com/lite-html');
+const { html, render } = await import("https://unpkg.com/lite-html");
 ```
 
 ## API
@@ -163,7 +163,7 @@ You can attach event handlers by prefixing an attribute name with `@`
 
 ```javascript
 const handleClick = (event) => {
-  alert('clicked the button');
+  alert("clicked the button");
 };
 const template = () => html`<button @click=${handleClick}></button>`;
 ```
@@ -190,10 +190,10 @@ The first time something is rendered into a target, the existing content of the 
 ```javascript
 const template = (name) => html`<p>Hello ${name}</p>`;
 
-render(template('World'), document.body);
+render(template("World"), document.body);
 
 // The same template is rendered again, so only the name is updated
-render(template('Everyone'), document.body);
+render(template("Everyone"), document.body);
 ```
 
 Lite-html keeps empty comment nodes (`<!---->`) in the rendered content to remember where the interpreted values are. Do not remove them.
@@ -208,20 +208,33 @@ class Counter extends HTMLElement {
     this.update();
   }
   update() {
-    render(html`<button @click=${this.increment}>${this.count}</button>`, this, { host: this });
+    render(
+      html`<button @click=${this.increment}>${this.count}</button>`,
+      this,
+      { host: this },
+    );
   }
 }
 ```
 
 The options are kept from the first render into a target. Passing different options on a later render into the same target has no effect.
 
-
 ### Directives
 
 Directives are exported alongside `html` and `render`.
 
 ```javascript
-import { html, render, cache, guard, ifDefined, repeat, unsafeHTML, until, when } from 'lite-html';
+import {
+  html,
+  render,
+  cache,
+  guard,
+  ifDefined,
+  repeat,
+  unsafeHTML,
+  until,
+  when,
+} from "lite-html";
 ```
 
 - `cache(value)` renders `value`, and keeps the DOM of every template rendered in that position. Without `cache`, the DOM of a template is discarded when something else is rendered in its place. Use it to switch quickly between a few large templates.
@@ -254,10 +267,12 @@ Requires Node.js 20 or later. The source is written in TypeScript.
 
 ```
 npm install
-npm run dev         # Serve the demo with Vite
+npm run dev         # Serve the dev page with Vite
 npm test            # Run the test suite once with Vitest
 npm run test:watch  # Run tests in watch mode
-npm run typecheck   # Type-check the source, tests, and demo
+npm run typecheck   # Type-check the source, tests, and dev page
+npm run format      # Format the code with Prettier (format:check to verify only)
+npm run check       # Type-check, verify formatting, and run the tests
 npm run build       # Build the ES module, the minified bundle served by unpkg, and the type declarations
 ```
 

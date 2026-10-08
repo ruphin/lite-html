@@ -1,19 +1,25 @@
-import { marker, attributeMarker, commentMarker, nodeMarker, failMarker } from '../../src/lib/markers.js';
+import {
+  marker,
+  attributeMarker,
+  commentMarker,
+  nodeMarker,
+  failMarker,
+} from "./markers.js";
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from "vitest";
 
-describe('markers', () => {
-  describe('marker', () => {
-    it('should contain only lowercase alphanumerical characters', () => {
+describe("markers", () => {
+  describe("marker", () => {
+    it("should contain only lowercase alphanumerical characters", () => {
       const alphaNumericalRegex = /^[a-z0-9]+$/;
       expect(marker.match(alphaNumericalRegex)).to.not.be.null;
     });
-    it('should be at least 10 characters long', () => {
+    it("should be at least 10 characters long", () => {
       expect(marker.length).to.be.at.least(10);
     });
   });
 
-  describe('nodeMarker', () => {
+  describe("nodeMarker", () => {
     it(`should contain the random marker`, () => {
       expect(nodeMarker.indexOf(marker)).to.be.above(0);
     });
@@ -22,19 +28,19 @@ describe('markers', () => {
     });
   });
 
-  describe('failMarker', () => {
+  describe("failMarker", () => {
     it(`should contain the random marker`, () => {
       expect(nodeMarker.indexOf(marker)).to.be.above(0);
     });
   });
 
-  describe('commentMarker', () => {
+  describe("commentMarker", () => {
     it(`should contain the random marker`, () => {
       expect(commentMarker.indexOf(marker)).to.be.above(0);
     });
   });
 
-  describe('attributeMarker', () => {
+  describe("attributeMarker", () => {
     it(`should contain the random marker`, () => {
       expect(attributeMarker.indexOf(marker)).to.be.above(0);
     });

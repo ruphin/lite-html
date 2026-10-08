@@ -1,6 +1,10 @@
-import { directive, type Directive } from '../lib/directive.js';
-import { TemplateResult, type Template, type TemplateInstance } from '../lib/templates.js';
-import type { NodePart } from '../lib/parts.js';
+import { directive, type Directive } from "../directive.js";
+import {
+  TemplateResult,
+  type Template,
+  type TemplateInstance,
+} from "../templates.js";
+import type { NodePart } from "../parts.js";
 
 // The template instances that were rendered in each part, indexed by their Template
 const instanceCaches = new WeakMap<NodePart, Map<Template, TemplateInstance>>();
@@ -21,7 +25,10 @@ export const cache = (value: unknown): Directive<NodePart> =>
 
     // If there is a cached instance of this template, put it back in the part
     // Clearing the part moves the nodes of the current instance back into its fragment
-    const instance = value instanceof TemplateResult ? instances.get(value.template) : undefined;
+    const instance =
+      value instanceof TemplateResult
+        ? instances.get(value.template)
+        : undefined;
     if (instance && part.instance !== instance) {
       part._renderNode(instance.fragment);
       part.instance = instance;

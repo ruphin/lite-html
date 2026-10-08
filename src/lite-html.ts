@@ -4,15 +4,21 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { TemplateResult } from './lib/templates.js';
-import { NodePart, type RenderOptions } from './lib/parts.js';
-import { createMarker } from './lib/dom.js';
+import { TemplateResult } from "./templates.js";
+import { NodePart, type RenderOptions } from "./parts.js";
+import { createMarker } from "./dom.js";
 
-export { noChange } from './lib/parts.js';
-export type { Part, NodePart, AttributePart, CommentPart, RenderOptions } from './lib/parts.js';
-export type { TemplateResult } from './lib/templates.js';
-export type { Directive } from './lib/directive.js';
-export * from './directives/index.js';
+export { noChange } from "./parts.js";
+export type {
+  Part,
+  NodePart,
+  AttributePart,
+  CommentPart,
+  RenderOptions,
+} from "./parts.js";
+export type { TemplateResult } from "./templates.js";
+export type { Directive } from "./directive.js";
+export * from "./directives/index.js";
 
 // A lookup map for NodeParts that represent the content of a render target
 const nodeParts = new WeakMap<ParentNode, NodePart>();
@@ -22,7 +28,10 @@ const nodeParts = new WeakMap<ParentNode, NodePart>();
  *
  * Returns the strings and values of the template string wrapped in a TemplateResult object
  */
-export const html = (strings: TemplateStringsArray, ...values: unknown[]): TemplateResult => {
+export const html = (
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+): TemplateResult => {
   return new TemplateResult(strings, values);
 };
 
@@ -32,7 +41,10 @@ export const html = (strings: TemplateStringsArray, ...values: unknown[]): Templ
  *
  * Returns the strings and values of the template string wrapped in a TemplateResult object
  */
-export const svg = (strings: TemplateStringsArray, ...values: unknown[]): TemplateResult => {
+export const svg = (
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+): TemplateResult => {
   return new TemplateResult(strings, values, true);
 };
 
@@ -48,7 +60,11 @@ export const svg = (strings: TemplateStringsArray, ...values: unknown[]): Templa
  *   Options for the render. `host` is the object that event handlers are called with as `this`.
  *   The options are kept from the first render into a target.
  */
-export const render = (content: unknown, target: ParentNode, options?: RenderOptions): void => {
+export const render = (
+  content: unknown,
+  target: ParentNode,
+  options?: RenderOptions,
+): void => {
   // Check if the target has a NodePart that represents its content
   let part = nodeParts.get(target);
   if (!part) {

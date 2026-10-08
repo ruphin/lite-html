@@ -1,6 +1,6 @@
-import { directive, type Directive } from '../lib/directive.js';
-import { createMarker } from '../lib/dom.js';
-import { NodePart } from '../lib/parts.js';
+import { directive, type Directive } from "../directive.js";
+import { createMarker } from "../dom.js";
+import { NodePart } from "../parts.js";
 
 export type KeyFn<T> = (item: T, index: number) => unknown;
 export type ItemTemplate<T> = (item: T, index: number) => unknown;
@@ -26,8 +26,16 @@ const itemRange = ({ beforeNode, afterNode }: NodePart): Range => {
  */
 export const repeat: {
   <T>(items: Iterable<T>, template: ItemTemplate<T>): Directive<NodePart>;
-  <T>(items: Iterable<T>, keyFn: KeyFn<T>, template: ItemTemplate<T>): Directive<NodePart>;
-} = <T>(items: Iterable<T>, keyFn: KeyFn<T>, template?: ItemTemplate<T>): Directive<NodePart> =>
+  <T>(
+    items: Iterable<T>,
+    keyFn: KeyFn<T>,
+    template: ItemTemplate<T>,
+  ): Directive<NodePart>;
+} = <T>(
+  items: Iterable<T>,
+  keyFn: KeyFn<T>,
+  template?: ItemTemplate<T>,
+): Directive<NodePart> =>
   directive((part: NodePart) => {
     if (!template) {
       part.render(Array.from(items, keyFn));
@@ -45,7 +53,9 @@ export const repeat: {
     // Index the previous item parts by key, and remove any duplicate keys
     const oldParts = new Map<unknown, NodePart>();
     for (const { key, itemPart } of previous) {
-      oldParts.has(key) ? itemRange(itemPart).deleteContents() : oldParts.set(key, itemPart);
+      oldParts.has(key)
+        ? itemRange(itemPart).deleteContents()
+        : oldParts.set(key, itemPart);
     }
 
     const parent = part.parentNode;
@@ -68,7 +78,6 @@ export const repeat: {
         parent.insertBefore(before, next);
         parent.insertBefore(createMarker(), next);
         itemPart = new NodePart({ node: before, options: part.options });
-
       }
       itemPart.render(template(item, index++));
       rendered.push({ key, itemPart });
@@ -76,7 +85,7 @@ export const repeat: {
     }
 
     // Remove the items that are no longer rendered
-    oldParts.forEach(itemPart => itemRange(itemPart).deleteContents());
+    oldParts.forEach((itemPart) => itemRange(itemPart).deleteContents());
 
     previousItems.set(part, rendered);
     part.node = rendered;

@@ -1,8 +1,11 @@
-import { directive, type Directive } from '../lib/directive.js';
-import type { NodePart } from '../lib/parts.js';
+import { directive, type Directive } from "../directive.js";
+import type { NodePart } from "../parts.js";
 
 // The HTML string that was last rendered in each part, and the DocumentFragment that was created for it
-const previousRenders = new WeakMap<NodePart, { htmlString: string; fragment: DocumentFragment }>();
+const previousRenders = new WeakMap<
+  NodePart,
+  { htmlString: string; fragment: DocumentFragment }
+>();
 
 /**
  * Render a string as HTML
@@ -12,8 +15,12 @@ const previousRenders = new WeakMap<NodePart, { htmlString: string; fragment: Do
 export const unsafeHTML = (htmlString: string): Directive<NodePart> =>
   directive((part: NodePart) => {
     const previous = previousRenders.get(part);
-    if (!previous || previous.htmlString !== htmlString || part.node !== previous.fragment) {
-      const template = document.createElement('template');
+    if (
+      !previous ||
+      previous.htmlString !== htmlString ||
+      part.node !== previous.fragment
+    ) {
+      const template = document.createElement("template");
       template.innerHTML = htmlString;
       const fragment = document.importNode(template.content, true);
       part.render(fragment);

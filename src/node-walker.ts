@@ -1,5 +1,11 @@
-import { marker, attributeMarker, commentMarker, nodeMarker, failMarker } from './markers.js';
-import { AttributePart, CommentPart, NodePart } from './parts.js';
+import {
+  marker,
+  attributeMarker,
+  commentMarker,
+  nodeMarker,
+  failMarker,
+} from "./markers.js";
+import { AttributePart, CommentPart, NodePart } from "./parts.js";
 
 /**
  * The description of a part in a Template
@@ -12,15 +18,21 @@ export type PartDefinition =
   | { type: typeof CommentPart; path: number[] }
   | { type: typeof AttributePart; path: number[]; attribute: string };
 
-const lastAttributeNameRegex = /[ \x09\x0a\x0c\x0d]([^\0-\x1F\x7F-\x9F \x09\x0a\x0c\x0d"'>=/]+)[ \x09\x0a\x0c\x0d]*=$/;
+const lastAttributeNameRegex =
+  /[ \x09\x0a\x0c\x0d]([^\0-\x1F\x7F-\x9F \x09\x0a\x0c\x0d"'>=/]+)[ \x09\x0a\x0c\x0d]*=$/;
 
-export const findParts = (strings: readonly string[], template: HTMLTemplateElement): PartDefinition[] => {
+export const findParts = (
+  strings: readonly string[],
+  template: HTMLTemplateElement,
+): PartDefinition[] => {
   const parts: PartDefinition[] = [];
 
   // Markers that were not parsed as HTML can not become parts, so throw an error to alert the developer
   const failOnMarker = (content: string, element: Element | null) => {
     if (content.includes(marker)) {
-      throw new Error(`Parts are not allowed inside <${element?.localName}> elements`);
+      throw new Error(
+        `Parts are not allowed inside <${element?.localName}> elements`,
+      );
     }
   };
 
@@ -33,7 +45,7 @@ export const findParts = (strings: readonly string[], template: HTMLTemplateElem
         parts.push({ type: CommentPart, path });
       } else if (node.data === nodeMarker) {
         // The NodePart only needs the position of this comment, so empty it to keep the rendered DOM clean
-        node.data = '';
+        node.data = "";
         parts.push({ type: NodePart, path });
       }
       // If it is not a marker for a Part, it is a regular comment
@@ -47,10 +59,12 @@ export const findParts = (strings: readonly string[], template: HTMLTemplateElem
         // This happens when an attribute literal contains the '>' character
         // There is no way to fix this, so throw an error to alert the developer to fix it
         if (node.hasAttribute(failMarker)) {
-          throw new Error("The '>' character is not allowed in attribute literals. Replace with '&gt;'");
+          throw new Error(
+            "The '>' character is not allowed in attribute literals. Replace with '&gt;'",
+          );
         }
         // The content of a nested <template> is not part of its childNodes, so it is not searched for parts
-        if (node.localName === 'template') {
+        if (node.localName === "template") {
           failOnMarker(node.innerHTML, node);
         }
         // If the node has any AttributeParts, it will have the attributeMarker attribute set
@@ -58,13 +72,17 @@ export const findParts = (strings: readonly string[], template: HTMLTemplateElem
           node.removeAttribute(attributeMarker);
 
           // Find the dynamic attributes by checking all attribute values against the attributeMarker
-          const dynamicAttributes = [...node.attributes].filter(attribute => attribute.value === attributeMarker);
+          const dynamicAttributes = [...node.attributes].filter(
+            (attribute) => attribute.value === attributeMarker,
+          );
 
           for (const dynamicAttribute of dynamicAttributes) {
             // The AttributePart renders the real attribute, so remove the marker from the template
             node.removeAttributeNode(dynamicAttribute);
             // Find the name of this AttributePart using the lastAttributeNameRegex on the string before this part
-            const attribute = lastAttributeNameRegex.exec(strings[parts.length])![1];
+            const attribute = lastAttributeNameRegex.exec(
+              strings[parts.length]!,
+            )![1]!;
             parts.push({ type: AttributePart, path, attribute });
           }
         }
@@ -74,7 +92,7 @@ export const findParts = (strings: readonly string[], template: HTMLTemplateElem
       const children = node.childNodes;
       const length = children.length;
       for (let i = 0; i < length; i++) {
-        recursiveSearch(children[i], [...path, i]);
+        recursiveSearch(children[i]!, [...path, i]);
       }
     }
   };
@@ -86,7 +104,9 @@ export const findParts = (strings: readonly string[], template: HTMLTemplateElem
   // Most likely a double attribute assignment was dropped by the HTML parser
   // Throw an error and warn the developer
   if (parts.length < strings.length - 1) {
-    throw new Error("Double attribute assignments are not allowed: '<div a=${0} a=${0}>'");
+    throw new Error(
+      "Double attribute assignments are not allowed: '<div a=${0} a=${0}>'",
+    );
   }
   return parts;
 };

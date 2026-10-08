@@ -1,6 +1,12 @@
-import { findParts, type PartDefinition } from './node-walker.js';
-import { buildTemplate } from './template-parser.js';
-import { AttributePart, CommentPart, NodePart, type Part, type RenderOptions } from './parts.js';
+import { findParts, type PartDefinition } from "./node-walker.js";
+import { buildTemplate } from "./template-parser.js";
+import {
+  AttributePart,
+  CommentPart,
+  NodePart,
+  type Part,
+  type RenderOptions,
+} from "./parts.js";
 
 /**
  * A map that contains all the template literals we have seen before
@@ -40,7 +46,11 @@ export class TemplateResult {
   isSvg: boolean | undefined;
   _template: Template | undefined;
 
-  constructor(strings: readonly string[], values: readonly unknown[], isSvg?: boolean) {
+  constructor(
+    strings: readonly string[],
+    values: readonly unknown[],
+    isSvg?: boolean,
+  ) {
     this.strings = strings;
     this.values = values;
     this.isSvg = isSvg;
@@ -84,13 +94,17 @@ export class TemplateInstance {
     this.fragment = document.importNode(template.element.content, true);
 
     // Create new Parts based on the part definitions set on the Template
-    this.parts = template.parts.map(definition => {
+    this.parts = template.parts.map((definition) => {
       let node: Node = this.fragment;
-      definition.path.forEach(nodeIndex => {
-        node = node.childNodes[nodeIndex];
+      definition.path.forEach((nodeIndex) => {
+        node = node.childNodes[nodeIndex]!;
       });
-      if ('attribute' in definition) {
-        return new AttributePart({ node: node as Element, attribute: definition.attribute, options });
+      if ("attribute" in definition) {
+        return new AttributePart({
+          node: node as Element,
+          attribute: definition.attribute,
+          options,
+        });
       }
       if (definition.type === CommentPart) {
         return new CommentPart({ node: node as Comment });

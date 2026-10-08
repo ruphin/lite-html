@@ -1,16 +1,20 @@
-import { TemplateResult, TemplateInstance } from './templates.js';
-import { createMarker, moveNodes } from './dom.js';
-import { isDirective } from './directive.js';
+import { TemplateResult, TemplateInstance } from "./templates.js";
+import { createMarker, moveNodes } from "./dom.js";
+import { isDirective } from "./directive.js";
 
 export type Serializable = string | number | boolean;
 
 export const isSerializable = (value: unknown): value is Serializable =>
-  typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
-export const isIterable = (nonPrimitive: unknown): nonPrimitive is Iterable<unknown> =>
-  typeof (nonPrimitive as Iterable<unknown>)[Symbol.iterator] === 'function';
+  typeof value === "string" ||
+  typeof value === "number" ||
+  typeof value === "boolean";
+export const isIterable = (
+  nonPrimitive: unknown,
+): nonPrimitive is Iterable<unknown> =>
+  typeof (nonPrimitive as Iterable<unknown>)[Symbol.iterator] === "function";
 
 const isPromiseLike = (value: unknown): value is PromiseLike<unknown> =>
-  typeof (value as PromiseLike<unknown>).then === 'function';
+  typeof (value as PromiseLike<unknown>).then === "function";
 
 // A flag that signals that no render should happen
 export const noChange = {};
@@ -120,7 +124,10 @@ export class NodePart {
     if (this.instance?.template === templateResult.template) {
       this.instance.render(templateResult.values);
     } else {
-      const instance = new TemplateInstance(templateResult.template, this.options);
+      const instance = new TemplateInstance(
+        templateResult.template,
+        this.options,
+      );
       // Render the values before inserting the fragment, so the new content is added to the DOM in one go
       instance.render(templateResult.values);
       this._renderNode(instance.fragment);
@@ -144,7 +151,9 @@ export class NodePart {
 
     let index = 0;
     // The marker of the next new part: the marker of this part, or the node that ends the last existing part
-    let marker = this.afterNode ? this.afterNode.previousSibling! : this.parentNode.lastChild!;
+    let marker = this.afterNode
+      ? this.afterNode.previousSibling!
+      : this.parentNode.lastChild!;
     for (const value of iterable) {
       let part = iterableParts[index];
       if (part === undefined) {
@@ -161,7 +170,7 @@ export class NodePart {
     if (index === 0) {
       moveNodes(this.beforeNode, this.afterNode);
     } else if (index < iterableParts.length) {
-      const lastPart = iterableParts[index - 1];
+      const lastPart = iterableParts[index - 1]!;
       moveNodes(lastPart.afterNode!, this.afterNode);
     }
     iterableParts.length = index;
@@ -186,7 +195,7 @@ export class NodePart {
     if (this.promise !== promise) {
       this.promise = promise;
       // When the promise resolves, render the result of that promise
-      promise.then(value => {
+      promise.then((value) => {
         // Render the promise result only if the last rendered value was the promise
         if (this.promise === promise) {
           this.promise = undefined;
@@ -204,7 +213,11 @@ export class NodePart {
    * Otherwise, the current content is removed from the DOM permanently
    */
   clear(): void {
-    moveNodes(this.beforeNode, this.afterNode, this.node instanceof DocumentFragment ? this.node : undefined);
+    moveNodes(
+      this.beforeNode,
+      this.afterNode,
+      this.node instanceof DocumentFragment ? this.node : undefined,
+    );
     this.node = emptyNode;
     // Release the TemplateInstance and the item parts that were rendered in this part
     this.instance = this.iterableParts = undefined;
@@ -219,14 +232,16 @@ export class CommentPart {
   }
 
   render(value: unknown): void {
-    this.node.textContent = value == null ? '' : String(value);
+    this.node.textContent = value == null ? "" : String(value);
   }
 }
 
-export type AttributePartType = 'attribute' | 'property' | 'boolean' | 'event';
+export type AttributePartType = "attribute" | "property" | "boolean" | "event";
 
 // An event listener is a function, or an object with a `handleEvent` method
-type EventHandler = ((this: unknown, event: Event) => void) | { handleEvent?: (event: Event) => void };
+type EventHandler =
+  | ((this: unknown, event: Event) => void)
+  | { handleEvent?: (event: Event) => void };
 
 export class AttributePart {
   node: Element;
@@ -238,31 +253,39 @@ export class AttributePart {
   options: RenderOptions | undefined;
   _render: (value: unknown) => void;
 
-  constructor({ node, attribute, options }: { node: Element; attribute: string; options?: RenderOptions }) {
+  constructor({
+    node,
+    attribute,
+    options,
+  }: {
+    node: Element;
+    attribute: string;
+    options?: RenderOptions;
+  }) {
     this.node = node;
     this.value = noChange;
     this.options = options;
     switch (attribute[0]) {
-      case '.':
-        this.type = 'property';
+      case ".":
+        this.type = "property";
         this._render = this._renderProperty;
         break;
-      case '?':
-        this.type = 'boolean';
+      case "?":
+        this.type = "boolean";
         this._render = this._renderBoolean;
         break;
-      case '@':
-        this.type = 'event';
+      case "@":
+        this.type = "event";
         this._render = this._renderEvent;
         break;
       default:
-        this.type = 'attribute';
+        this.type = "attribute";
         this._render = this._renderAttribute;
     }
     // Prefixed attributes are not real attributes, the name is the part after the prefix
-    this.name = this.type === 'attribute' ? attribute : attribute.slice(1);
+    this.name = this.type === "attribute" ? attribute : attribute.slice(1);
     // The part itself is the event listener, so the handler can change without replacing the listener
-    if (this.type === 'event') {
+    if (this.type === "event") {
       this.node.addEventListener(this.name, this);
     }
   }
@@ -281,7 +304,9 @@ export class AttributePart {
 
   _renderBoolean(boolean: unknown): void {
     if (this.value !== !!boolean) {
-      boolean ? this.node.setAttribute(this.name, '') : this.node.removeAttribute(this.name);
+      boolean
+        ? this.node.setAttribute(this.name, "")
+        : this.node.removeAttribute(this.name);
       this.value = !!boolean;
     }
   }
@@ -298,9 +323,8 @@ export class AttributePart {
    */
   handleEvent(event: Event): void {
     const listener = this.value as EventHandler | null | undefined;
-    if (typeof listener === 'function') {
+    if (typeof listener === "function") {
       listener.call(this.options?.host ?? this.node, event);
-
     } else {
       listener?.handleEvent?.(event);
     }
@@ -308,7 +332,7 @@ export class AttributePart {
 
   _renderAttribute(value: unknown): void {
     if (this.value !== value) {
-      this.node.setAttribute(this.name, String(value ?? ''));
+      this.node.setAttribute(this.name, String(value ?? ""));
       this.value = value;
     }
   }

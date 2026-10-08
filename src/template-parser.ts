@@ -1,5 +1,5 @@
-import { attributeMarker, commentMarker, nodeMarker } from './markers.js';
-import { createMarker } from './dom.js';
+import { attributeMarker, commentMarker, nodeMarker } from "./markers.js";
+import { createMarker } from "./dom.js";
 
 // The second marker is to add a boolean attribute to the element
 // This is to easily test if a node has dynamic attributes by checking against that attribute
@@ -15,7 +15,8 @@ export const nodeMarkerTag = `<!--${nodeMarker}-->`;
 /**
  * The context a part is in. Each context has its own marker tag, so the marker tag identifies the context
  */
-export type Context = typeof attributeMarkerTag | typeof commentMarkerTag | typeof nodeMarkerTag;
+export type Context =
+  typeof attributeMarkerTag | typeof commentMarkerTag | typeof nodeMarkerTag;
 
 // A `<` only opens a tag if it is followed by one of these characters, otherwise the browser treats it as text
 const tagOpen = /<[a-zA-Z/!?]/g;
@@ -24,14 +25,17 @@ const tagOpen = /<[a-zA-Z/!?]/g;
  * Find the context at the end of a string, given the context at its start
  */
 export const parseContext = (string: string, context: Context): Context => {
-  const openComment = string.lastIndexOf('<!--');
+  const openComment = string.lastIndexOf("<!--");
   // A comment that is open at the start of the string, or opens in it, stays open unless it is closed
   // Only look for the close when a comment is involved, most strings have none
-  if ((context === commentMarkerTag || openComment > -1) && string.indexOf('-->', openComment + 1) < 0) {
+  if (
+    (context === commentMarkerTag || openComment > -1) &&
+    string.indexOf("-->", openComment + 1) < 0
+  ) {
     return commentMarkerTag;
   }
   // The string ends inside a tag if a tag opens after the last `>`
-  const closeTag = string.lastIndexOf('>');
+  const closeTag = string.lastIndexOf(">");
   tagOpen.lastIndex = closeTag + 1;
   if (tagOpen.test(string)) {
     return attributeMarkerTag;
@@ -41,21 +45,24 @@ export const parseContext = (string: string, context: Context): Context => {
 };
 
 export const parseTemplate = (strings: readonly string[]): string => {
-  let html = '';
+  let html = "";
   let context: Context = nodeMarkerTag;
   // The parts are in between the strings, so only the context at the end of each string but the last is needed
   for (const string of strings.slice(0, -1)) {
     context = parseContext(string, context);
-    if (context === attributeMarkerTag && !string.endsWith('=')) {
-      throw new Error('Only bare attribute parts are allowed: `<div a=${0}>`');
+    if (context === attributeMarkerTag && !string.endsWith("=")) {
+      throw new Error("Only bare attribute parts are allowed: `<div a=${0}>`");
     }
     html += string + context;
   }
   return html + strings.at(-1);
 };
 
-export const buildTemplate = (strings: readonly string[], isSvg?: boolean): HTMLTemplateElement => {
-  const template = document.createElement('template');
+export const buildTemplate = (
+  strings: readonly string[],
+  isSvg?: boolean,
+): HTMLTemplateElement => {
+  const template = document.createElement("template");
   const html = parseTemplate(strings);
   if (isSvg) {
     // Parse the content inside an <svg> element to create it in the SVG namespace, then remove that element again
