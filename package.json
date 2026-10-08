@@ -1,6 +1,6 @@
 {
   "name": "lite-html",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A re-implementation of lit-html",
   "main": "./dist/lite-html.js",
   "types": "./dist/lite-html.d.ts",

@@ -2,7 +2,7 @@
 
 All notable changes to lite-html are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.2.0] - 2026-10-08
 
 ### Added
 
@@ -53,5 +53,6 @@ All notable changes to lite-html are documented in this file. The format follows
 - Rejected promises were reported twice by `until`.
 - The shared part descriptors of a `Template` were mutated by its instances.
 
+[1.2.0]: https://github.com/ruphin/lite-html/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/ruphin/lite-html/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/ruphin/lite-html/compare/v0.2.4...v1.0.0
